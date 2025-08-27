@@ -41,7 +41,7 @@ const props = defineProps<{
           props.class,
         ]"
         :placeholder="props.placeholder"
-        @value-changed="(value) => $emit('valueChanged', value)"
+        @value-changed="(value: string) => $emit('valueChanged', value)"
       />
 
       <div class="absolute top-0 right-0">

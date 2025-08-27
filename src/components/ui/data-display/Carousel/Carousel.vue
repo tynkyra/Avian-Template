@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import type { IAttachment, IConversation } from "@src/types";
+import type { IAttachment, IConversation } from "@src/types/messaging";
 
 import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 
-import { hasAttachments } from "@src/utils";
+import { hasAttachments } from "@src/lib/utils";
 import { useFocusTrap } from "@vueuse/integrations/useFocusTrap";
 import VideoPlayer from "@src/components/ui/data-display/VideoPlayer.vue";
 import IconButton from "@src/components/ui/inputs/IconButton.vue";
-import Toolbar from "@src/components/ui/data-display/Carousel/Toolbar.vue";
+import Toolbar from "@src/components/ui/data-display/carousel/Toolbar.vue";
 import ScaleTransition from "@src/components/ui/transitions/ScaleTransition.vue";
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/vue/24/solid";

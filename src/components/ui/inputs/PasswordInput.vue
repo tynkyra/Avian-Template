@@ -30,7 +30,7 @@ const showPassword = ref(false);
     :placeholder="props.placeholder"
     :class="props.class"
     :bordered="props.bordered"
-    @value-changed="(value) => $emit('valueChanged', value)"
+    @value-changed="(value: string) => $emit('valueChanged', value)"
   >
     <template v-slot:endAdornment>
       <IconButton

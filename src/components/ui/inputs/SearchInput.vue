@@ -17,7 +17,7 @@ const props = defineProps<{
     placeholder="Search.."
     class="pl-7"
     :value="props.value"
-    @value-changed="(value) => $emit('valueChanged', value)"
+    @value-changed="(value: string) => $emit('valueChanged', value)"
   >
     <template v-slot:startAdornment>
       <MagnifyingGlassIcon

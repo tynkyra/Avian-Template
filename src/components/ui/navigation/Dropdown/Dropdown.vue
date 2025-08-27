@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from "vue";
-
 import ScaleTransition from "@src/components/ui/transitions/ScaleTransition.vue";
 
 const props = defineProps<{
@@ -37,10 +36,7 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <div
-      v-if="props.show"
-      class="fixed left-0 top-0 z-50 w-full h-full"
-    ></div>
+    <div v-if="props.show" class="fixed left-0 top-0 z-50 w-full h-full"></div>
 
     <ScaleTransition>
       <div

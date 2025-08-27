@@ -3,3 +3,5 @@ package-lock.json
 .prettierrc
 .vscode
 dist/
+notes/
+.DS_Store

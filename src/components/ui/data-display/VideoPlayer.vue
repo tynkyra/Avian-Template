@@ -83,7 +83,7 @@ const handleToggleVideo = (state: any, player: any) => {
     :poster="props.thumbnail"
     @timeupdate="handleTimeChange"
     @volumechange="handleVolumeChange"
-    @loadstart="(event) => $emit('videoLoad', event)"
+    @loadstart="(event: any) => $emit('videoLoad', event)"
   >
     <template v-slot="{ player, state }">
       <div class="overlay-container">
@@ -146,7 +146,7 @@ const handleToggleVideo = (state: any, player: any) => {
             >
               <RangeSlider
                 @value-changed="
-                  ($event) => handleVolumeSliderChange($event, player)
+                  ($event: any) => handleVolumeSliderChange($event, player)
                 "
                 :percentage="volume"
                 class="volume-slider"
@@ -178,7 +178,9 @@ const handleToggleVideo = (state: any, player: any) => {
             class="track-slider"
             :percentage="percentage"
             aria-label="time track slider"
-            @value-changed="($event) => handleTrackInput($event, player, state)"
+            @value-changed="
+              ($event: any) => handleTrackInput($event, player, state)
+            "
           />
 
           <!--maximize button-->

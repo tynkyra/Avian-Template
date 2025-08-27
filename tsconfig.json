@@ -17,15 +17,9 @@
     ],
     "skipLibCheck": true,
     "paths": {
-      "*": [
-        "./src/client/@custom_types/*"
-      ],
-      "@src/*": [
+        "@src/*": [
         "./src/*"
       ],
-      "@custom_types/*": [
-        "./src/@custom_types/*"
-      ]
     }
   },
   "include": [
