@@ -32,21 +32,13 @@ const handleHidePinnedMessage = () => {
 };
 
 // (event) remove the pinned message
-const handleRemovePinnedMessage = () => {
+const handleRemovePinnedMessage = async () => {
   if (activeConversation) {
-    // get the active conversation index in the state store
-    let activeConversationIndex = getConversationIndex(activeConversation.id);
-
-    if (
-      store.conversations &&
-      activeConversationIndex !== undefined &&
-      activeConversationIndex !== null
-    ) {
-      // update the conversation in the state store
-      store.conversations[activeConversationIndex].pinnedMessage = undefined;
-
-      // send socket message notifying other users that the message is removed
-      // ...
+    try {
+      await store.pinMessage(activeConversation.id, null);
+    } catch (error) {
+      console.error('Failed to unpin message:', error);
+      alert('Failed to unpin message. Please try again.');
     }
   }
 };

@@ -2,7 +2,6 @@
 import { ref, onMounted, onUnmounted } from "vue";
 
 import useStore from "@src/store/store";
-import { fetchData } from "@src/store/defaults";
 
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
 
@@ -39,21 +38,13 @@ store.$subscribe((_mutation, state) => {
 
 // here we load the data from the server.
 onMounted(async () => {
-  store.status = "loading";
-
-  // fake server call
+  // Initialize authentication and load user data if logged in
+  await store.initializeAuth();
+  
+  // Set delay loading to false after short delay for UI transitions
   setTimeout(() => {
     store.delayLoading = false;
-  });
-  const request = await fetchData();
-
-  store.$patch({
-    status: "success",
-    user: request.data.user,
-    conversations: request.data.conversations,
-    notifications: request.data.notifications,
-    archivedConversations: request.data.archivedConversations,
-  });
+  }, 100);
 });
 
 // the app height

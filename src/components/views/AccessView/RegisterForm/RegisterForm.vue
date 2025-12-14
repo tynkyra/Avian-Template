@@ -1,35 +1,75 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
+import { RouterLink } from "vue-router";
 
 import SlideTransition from "@src/components/ui/transitions/SlideTransition.vue";
 import PasswordSection from "@src/components/views/AccessView/RegisterForm/PasswordSection.vue";
 import PersonalSection from "@src/components/views/AccessView/RegisterForm/PersonalSection.vue";
-import { RouterLink } from "vue-router";
+import useStore from "@src/store/store";
 
-defineEmits(["activeSectionChange"]);
+const router = useRouter();
+const store = useStore();
 
-// determines what form section to use.
+// form state
+const email = ref("");
+const firstName = ref("");
+const lastName = ref("");
+const password = ref("");
+const confirmPassword = ref("");
+const loading = ref(false);
+const errorMessage = ref("");
+
+// navigation state
 const activeSectionName = ref("personal-section");
-
-// determines what direction the slide animation should use.
 const animation = ref("slide-left");
 
-// get the active section component from the section name
-const ActiveSection = computed((): any => {
-  if (activeSectionName.value === "personal-section") {
-    return PersonalSection;
-  } else if (activeSectionName.value === "password-section") {
-    return PasswordSection;
-  }
-});
+const personalValid = computed(() =>
+  !!email.value.trim() && !!firstName.value.trim() && !!lastName.value.trim()
+);
+const passwordValid = computed(() =>
+  !!password.value && password.value === confirmPassword.value
+);
+const formValid = computed(() => personalValid.value && passwordValid.value);
 
-// (event) to move between modal pages
 const changeActiveSection = (event: {
   sectionName: string;
   animationName: string;
 }) => {
   animation.value = event.animationName;
   activeSectionName.value = event.sectionName;
+};
+
+const goPasswordSection = () => {
+  if (!personalValid.value) {
+    errorMessage.value = "Please fill email, first, and last name";
+    return;
+  }
+  errorMessage.value = "";
+  changeActiveSection({ sectionName: "password-section", animationName: "slide-left" });
+};
+
+const handleSignup = async () => {
+  if (!formValid.value || loading.value) return;
+  errorMessage.value = "";
+  loading.value = true;
+  try {
+    await store.register({
+      firstName: firstName.value.trim(),
+      lastName: lastName.value.trim(),
+      email: email.value.trim(),
+      password: password.value,
+    });
+    router.push("/chat/no-chat/");
+  } catch (err: any) {
+    errorMessage.value = err?.message || "Sign up failed";
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleBack = () => {
+  changeActiveSection({ sectionName: "personal-section", animationName: "slide-right" });
 };
 </script>
 
@@ -55,10 +95,27 @@ const changeActiveSection = (event: {
       <!--form section-->
       <SlideTransition :animation="animation">
         <component
-          @active-section-change="changeActiveSection"
-          :is="ActiveSection"
+          :is="activeSectionName === 'personal-section' ? PersonalSection : PasswordSection"
+          :email="email"
+          :first-name="firstName"
+          :last-name="lastName"
+          :password="password"
+          :confirm-password="confirmPassword"
+          :personal-valid="personalValid"
+          :password-valid="passwordValid"
+          :loading="loading"
+          @update:email="(v: string) => (email = v)"
+          @update:first-name="(v: string) => (firstName = v)"
+          @update:last-name="(v: string) => (lastName = v)"
+          @update:password="(v: string) => (password = v)"
+          @update:confirm-password="(v: string) => (confirmPassword = v)"
+          @next="goPasswordSection"
+          @back="handleBack"
+          @submit="handleSignup"
         />
       </SlideTransition>
+
+      <p v-if="errorMessage" class="text-red-500 text-sm mt-4">{{ errorMessage }}</p>
 
       <!--bottom text-->
       <div class="flex justify-center">

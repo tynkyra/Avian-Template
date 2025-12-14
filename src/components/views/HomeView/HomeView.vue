@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import useStore from "@src/store/store";
+import { useRoute } from "vue-router";
 
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
 import Navigation from "@src/components/views/HomeView/Navigation/Navigation.vue";
 import Sidebar from "@src/components/views/HomeView/Sidebar/Sidebar.vue";
-import { getActiveConversationId } from "@src/utils";
 
 const store = useStore();
+const route = useRoute();
 </script>
 
 <template>
@@ -25,7 +26,7 @@ const store = useStore();
         id="mainContent"
         class="xs:absolute xs:z-10 md:static grow h-full xs:w-full md:w-fit scrollbar-hidden bg-white dark:bg-gray-800 transition-all duration-500"
         :class="
-          getActiveConversationId()
+          route.params.id
             ? ['xs:-left-[0rem]', 'xs:static']
             : ['xs:left-250']
         "
@@ -33,7 +34,7 @@ const store = useStore();
       >
         <router-view v-slot="{ Component }">
           <FadeTransition name="fade" mode="out-in">
-            <component :is="Component" :key="getActiveConversationId()" />
+            <component :is="Component" :key="route.params.id" />
           </FadeTransition>
         </router-view>
       </div>

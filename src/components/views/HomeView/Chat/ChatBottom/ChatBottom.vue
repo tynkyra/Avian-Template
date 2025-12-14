@@ -74,6 +74,31 @@ const handleSetDraft = () => {
 onMounted(() => {
   value.value = activeConversation.draftMessage;
 });
+
+// send message function
+const handleSendMessage = async () => {
+  if (!value.value.trim()) return;
+  
+  try {
+    await store.sendMessage(activeConversation.id, value.value.trim());
+    value.value = '';
+    // Clear draft message
+    const index = getConversationIndex(activeConversation.id);
+    if (index !== undefined) {
+      store.conversations[index].draftMessage = '';
+    }
+  } catch (error) {
+    console.error('Failed to send message:', error);
+  }
+};
+
+// handle enter key
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    handleSendMessage();
+  }
+};
 </script>
 
 <template>
@@ -91,6 +116,8 @@ onMounted(() => {
       v-if="store.status !== 'loading'"
       :class="recording ? ['justify-between'] : []"
     >
+ 
+
       <div class="min-h-[2.75rem]">
         <!--select attachments button-->
         <IconButton
@@ -107,6 +134,31 @@ onMounted(() => {
         <p v-if="recording" class="body-1 text-indigo-300">00:11</p>
       </div>
 
+           <!-- Avatar Bubble -->
+      <div class="mr-3 mb-2">
+        <button
+          @click="store.toggleAvatar()"
+          class="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-offset-2 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4"
+          :class="store.activeAvatar === 'A' 
+            ? 'ring-blue-500 focus:ring-blue-300' 
+            : 'ring-yellow-500 focus:ring-yellow-300'"
+          :title="`Currently speaking as ${store.activeAvatar === 'A' ? store.avatarA.firstName : store.avatarB.firstName} ${store.activeAvatar === 'A' ? store.avatarA.lastName : store.avatarB.lastName}. Click to switch.`"
+        >
+          <img
+            :src="store.activeAvatar === 'A' ? store.avatarA.avatar : store.avatarB.avatar"
+            :alt="`${store.activeAvatar === 'A' ? store.avatarA.firstName : store.avatarB.firstName} avatar`"
+            class="w-full h-full object-cover"
+          />
+          <!-- Active indicator badge -->
+          <div 
+            class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white"
+            :class="store.activeAvatar === 'A' ? 'bg-blue-500' : 'bg-yellow-500'"
+          >
+            {{ store.activeAvatar }}
+          </div>
+        </button>
+      </div>
+
       <!--message textarea-->
       <div class="grow md:mr-5 xs:mr-4 self-end" v-if="!recording">
         <div class="relative">
@@ -114,6 +166,7 @@ onMounted(() => {
             class="max-h-[5rem] pr-12.5 resize-none scrollbar-hidden"
             @value-changed="(newValue: string) => (value = newValue)"
             @input="handleSetDraft"
+            @keydown="handleKeyDown"
             :value="value"
             auto-resize
             cols="30"
@@ -197,6 +250,7 @@ onMounted(() => {
         <!--send message button-->
         <IconButton
           v-if="!recording"
+          @click="handleSendMessage"
           class="ic-btn-contained-primary w-7 h-7 active:scale-110"
           title="send message"
           aria-label="send message"

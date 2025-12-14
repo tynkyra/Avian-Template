@@ -3,8 +3,7 @@ import type { Ref } from "vue";
 
 import useStore from "@src/store/store";
 import { computed, provide, ref } from "vue";
-
-import { getActiveConversationId } from "@src/utils";
+import { useRoute } from "vue-router";
 
 import NoChatSelected from "@src/components/states/empty-states/NoChatSelected.vue";
 import Spinner from "@src/components/states/loading-states/Spinner.vue";
@@ -13,18 +12,21 @@ import ChatMiddle from "@src/components/views/HomeView/Chat/ChatMiddle/ChatMiddl
 import ChatTop from "@src/components/views/HomeView/Chat/ChatTop/ChatTop.vue";
 
 const store = useStore();
+const route = useRoute();
 
 // search the selected conversation using activeConversationId.
 const activeConversation = computed(() => {
+  const activeConversationId = route.params.id ? Number(route.params.id) : undefined;
+  
   let activeConversation = store.conversations.find(
-    (conversation) => conversation.id === getActiveConversationId(),
+    (conversation) => conversation.id === activeConversationId,
   );
 
   if (activeConversation) {
     return activeConversation;
   } else {
     return store.archivedConversations.find(
-      (conversation) => conversation.id === getActiveConversationId(),
+      (conversation) => conversation.id === activeConversationId,
     );
   }
 });
@@ -98,7 +100,7 @@ const handleCloseSelect = () => {
   <Spinner v-if="store.status === 'loading' || store.delayLoading" />
 
   <div
-    v-else-if="getActiveConversationId() && activeConversation"
+    v-else-if="route.params.id && activeConversation"
     class="h-full flex flex-col scrollbar-hidden"
   >
     <ChatTop

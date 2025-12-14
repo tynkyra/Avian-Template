@@ -60,6 +60,15 @@ export const getAvatar = (conversation: IConversation) => {
  * @returns String
  */
 export const getName = (conversation: IConversation , hyphen?: boolean) => {
+  // For self chats, always show the conversation name
+  if (conversation.type === 'self_chat') {
+    if (hyphen) {
+      return (conversation.name as string).split(" ").join("-");
+    } else {
+      return conversation.name;
+    }
+  }
+  
   if (["group", "broadcast"].includes(conversation.type)) {
     if (hyphen) {
       return (conversation.name as string).split(" ").join("-");

@@ -32,22 +32,15 @@ const store = useStore();
 const activeConversation = <IConversation>inject("activeConversation");
 
 // (event) pin message to conversation
-const handlePinMessage = () => {
+const handlePinMessage = async () => {
   props.handleCloseContextMenu();
 
   if (activeConversation) {
-    // get the active conversation index in the state store
-    let activeConversationIndex = getConversationIndex(activeConversation.id);
-
-    if (
-      store.conversations &&
-      activeConversationIndex !== undefined &&
-      activeConversationIndex !== null
-    ) {
-      // update the conversation in the state store
-      store.conversations[activeConversationIndex].pinnedMessage =
-        props.message;
-      store.conversations[activeConversationIndex].pinnedMessageHidden = false;
+    try {
+      await store.pinMessage(activeConversation.id, props.message.id);
+    } catch (error) {
+      console.error('Failed to pin message:', error);
+      alert('Failed to pin message. Please try again.');
     }
   }
 };
@@ -67,6 +60,24 @@ const handleReplyToMessage = () => {
     ) {
       // update the conversation in the state store
       store.conversations[activeConversationIndex].replyMessage = props.message;
+    }
+  }
+};
+
+// (event) delete message
+const handleDeleteMessage = async () => {
+  props.handleCloseContextMenu();
+  
+  if (!confirm('Are you sure you want to delete this message?')) {
+    return;
+  }
+  
+  if (activeConversation) {
+    try {
+      await store.deleteMessage(activeConversation.id, props.message.id);
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      alert('Failed to delete message. Please try again.');
     }
   }
 };
@@ -150,7 +161,7 @@ const handleReplyToMessage = () => {
       class="dropdown-link dropdown-link-danger"
       role="menuitem"
       aria-label="delete this message"
-      @click="handleCloseContextMenu"
+      @click="handleDeleteMessage"
     >
       <TrashIcon class="h-5 w-5 mr-3" />
       Delete Message

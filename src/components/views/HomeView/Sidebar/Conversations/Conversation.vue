@@ -2,10 +2,10 @@
 import type { IAttachment, IConversation, IRecording } from "@src/types";
 import type { Ref } from "vue";
 import { computed, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import useStore from "@src/store/store";
 import {
-  getActiveConversationId,
   getAvatar,
   getConversationIndex,
   getName,
@@ -28,6 +28,7 @@ const props = defineProps<{
 }>();
 
 const store = useStore();
+const route = useRoute();
 
 const showContextMenu = ref(false);
 
@@ -54,6 +55,39 @@ const handleCloseContextMenu = () => {
   showContextMenu.value = false;
 };
 
+// (event) archive conversation
+const handleArchiveConversation = async () => {
+  handleCloseContextMenu();
+  try {
+    await store.archiveConversation(props.conversation.id, true);
+    // Redirect to messages if this was the active conversation
+    const activeId = route.params.id ? Number(route.params.id) : undefined;
+    if (activeId === props.conversation.id) {
+      router.push({ path: '/' });
+    }
+  } catch (error) {
+    console.error('Failed to archive conversation:', error);
+  }
+};
+
+// (event) delete conversation
+const handleDeleteConversation = async () => {
+  handleCloseContextMenu();
+  if (!confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
+    return;
+  }
+  try {
+    await store.deleteConversation(props.conversation.id);
+    // Redirect to messages if this was the active conversation
+    const activeId = route.params.id ? Number(route.params.id) : undefined;
+    if (activeId === props.conversation.id) {
+      router.push({ path: '/' });
+    }
+  } catch (error) {
+    console.error('Failed to delete conversation:', error);
+  }
+};
+
 // (event) select this conversation.
 const handleSelectConversation = () => {
   showContextMenu.value = false;
@@ -75,7 +109,10 @@ const handleRemoveUnread = () => {
 
 // (computed property) determines if this conversation is active.
 const isActive = computed(
-  () => getActiveConversationId() === props.conversation.id,
+  () => {
+    const activeId = route.params.id ? Number(route.params.id) : undefined;
+    return activeId === props.conversation.id;
+  },
 );
 </script>
 
@@ -128,7 +165,7 @@ const isActive = computed(
             <p
               v-if="
                 props.conversation.draftMessage &&
-                props.conversation.id !== getActiveConversationId()
+                !isActive
               "
               class="body-2 flex justify-start items-center text-red-400"
             >
@@ -138,7 +175,7 @@ const isActive = computed(
             <!--recording name-->
             <p
               v-else-if="
-                lastMessage.type === 'recording' && lastMessage.content
+                lastMessage?.type === 'recording' && lastMessage?.content
               "
               class="body-2 text-black/70 dark:text-white/70 flex justify-start items-center"
             >
@@ -154,7 +191,7 @@ const isActive = computed(
 
             <!--attachments title-->
             <p
-              v-else-if="hasAttachments(lastMessage)"
+              v-else-if="lastMessage && hasAttachments(lastMessage)"
               class="body-2 text-black/70 dark:text-white/70 flex justify-start items-center"
               :class="{ 'text-indigo-400': props.conversation.unread }"
             >
@@ -165,13 +202,21 @@ const isActive = computed(
 
             <!--last message content -->
             <p
-              v-else
+              v-else-if="lastMessage"
               class="body-2 text-black/70 dark:text-white/70 flex justify-start items-center"
               :class="{ 'text-indigo-400': props.conversation.unread }"
             >
               <span :class="{ 'text-indigo-400': props.conversation.unread }">
                 {{ shorten(lastMessage) }}
               </span>
+            </p>
+            
+            <!--no messages yet -->
+            <p
+              v-else
+              class="body-2 text-gray-400 dark:text-gray-500 flex justify-start items-center"
+            >
+              No messages yet
             </p>
           </div>
 
@@ -214,7 +259,7 @@ const isActive = computed(
         class="dropdown-link dropdown-link-primary"
         aria-label="Add conversation to archive"
         role="menuitem"
-        @click="handleCloseContextMenu"
+        @click="handleArchiveConversation"
       >
         <ArchiveBoxArrowDownIcon class="h-5 w-5 mr-3" />
         Archive conversation
@@ -224,7 +269,7 @@ const isActive = computed(
         class="dropdown-link dropdown-link-danger"
         aria-label="Delete the conversation"
         role="menuitem"
-        @click="handleCloseContextMenu"
+        @click="handleDeleteConversation"
       >
         <TrashIcon class="h-5 w-5 mr-3" />
         Delete conversation

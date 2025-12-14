@@ -10,11 +10,12 @@ const props = defineProps<{
 
 <template>
   <component
-    :is="link ? RouterLink : 'button'"
-    @click="$emit('button-clicked', $event)"
-    tabindex="0"
-    class="group btn"
-  >
+      :is="link ? RouterLink : 'button'"
+      v-bind="$attrs"
+      @click="$emit('button-clicked', $event)"
+      tabindex="0"
+      class="group btn"
+    >
     <!--loading icon-->
     <svg
       v-if="props.loading"

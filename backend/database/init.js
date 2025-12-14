@@ -1,0 +1,146 @@
+import sqlite3 from 'sqlite3';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const dbPath = process.env.DB_PATH || join(__dirname, '..', 'database.sqlite');
+
+export const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('📊 Connected to SQLite database');
+  }
+});
+
+export const initDatabase = () => {
+  // Users table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      avatar TEXT,
+      last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Contacts table (relationship between users)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS contacts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      contact_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      FOREIGN KEY (contact_id) REFERENCES users (id),
+      UNIQUE(user_id, contact_id)
+    )
+  `);
+
+  // Conversations table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL DEFAULT 'private',
+      name TEXT,
+      avatar TEXT,
+      created_by INTEGER NOT NULL,
+      pinned_message_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users (id),
+      FOREIGN KEY (pinned_message_id) REFERENCES messages (id)
+    )
+  `);
+
+  // Add pinned_message_id column if it doesn't exist (migration)
+  db.run(`
+    ALTER TABLE conversations ADD COLUMN pinned_message_id INTEGER
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Conversation participants
+  db.run(`
+    CREATE TABLE IF NOT EXISTS conversation_participants (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      is_admin BOOLEAN DEFAULT FALSE,
+      is_archived BOOLEAN DEFAULT FALSE,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations (id),
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      UNIQUE(conversation_id, user_id)
+    )
+  `);
+
+  // Add is_archived column if it doesn't exist (migration)
+  db.run(`
+    ALTER TABLE conversation_participants ADD COLUMN is_archived BOOLEAN DEFAULT FALSE
+  `, (err) => {
+    // Ignore error if column already exists
+    if (!err) {
+      // Set all existing rows to is_archived = 0 (false)
+      db.run(`UPDATE conversation_participants SET is_archived = 0 WHERE is_archived IS NULL`, (updateErr) => {
+        if (updateErr) {
+          console.log('Note: Could not update existing rows (might already be set):', updateErr.message);
+        } else {
+          console.log('✅ Set all existing conversations to is_archived = 0');
+        }
+      });
+    }
+  });
+
+  // Messages table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      sender_id INTEGER NOT NULL,
+      type TEXT DEFAULT 'text',
+      content TEXT,
+      reply_to INTEGER,
+      state TEXT DEFAULT 'sent',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations (id),
+      FOREIGN KEY (sender_id) REFERENCES users (id),
+      FOREIGN KEY (reply_to) REFERENCES messages (id)
+    )
+  `);
+
+  // Message attachments
+  db.run(`
+    CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      size INTEGER,
+      url TEXT NOT NULL,
+      thumbnail TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (message_id) REFERENCES messages (id)
+    )
+  `);
+
+  // Message read receipts
+  db.run(`
+    CREATE TABLE IF NOT EXISTS message_receipts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (message_id) REFERENCES messages (id),
+      FOREIGN KEY (user_id) REFERENCES users (id),
+      UNIQUE(message_id, user_id)
+    )
+  `);
+
+  console.log('📋 Database tables initialized');
+};

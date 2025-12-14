@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { IContactGroup } from "@src/types";
+import type { IContactGroup, IUser } from "@src/types";
 import type { Ref } from "vue";
 
 import { ref } from "vue";
+import useStore from "@src/store/store";
+import { apiService } from "@src/services/api";
 
 import { getFullName } from "@src/utils";
 
@@ -19,6 +21,30 @@ const props = defineProps<{
   contactGroups?: IContactGroup[];
   bottomEdge?: number;
 }>();
+
+const store = useStore();
+
+// (event) delete contact
+const handleDeleteContact = async (contact: IUser) => {
+  handleCloseAllMenus();
+  
+  if (!confirm(`Are you sure you want to remove ${getFullName(contact)} from your contacts?`)) {
+    return;
+  }
+  
+  try {
+    await apiService.removeContact(contact.id);
+    
+    // Reload user data to update contacts list
+    if (store.user) {
+      const userData = await apiService.getCurrentUser();
+      store.user = userData;
+    }
+  } catch (error) {
+    console.error('Failed to delete contact:', error);
+    alert('Failed to delete contact. Please try again.');
+  }
+};
 
 // the position of the dropdown menu.
 const dropdownMenuPosition = ref(["top-6", "right-0"]);
@@ -148,6 +174,7 @@ const handleClickOutside = (event: Event) => {
               class="dropdown-link dropdown-link-danger"
               aria-label="Delete contact"
               role="menuitem"
+              @click="() => handleDeleteContact(contact)"
             >
               <TrashIcon class="h-5 w-5 mr-3" />
               Delete contact

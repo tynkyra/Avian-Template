@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { attachments } from "@src/store/defaults";
-
 import Attachment from "@src/components/shared/modals/AttachmentsModal/Attachment.vue";
 import Button from "@src/components/ui/inputs/Button.vue";
 import LabeledTextInput from "@src/components/ui/inputs/LabeledTextInput.vue";
@@ -11,6 +9,9 @@ const props = defineProps<{
   open: boolean;
   closeModal: () => void;
 }>();
+
+// TODO: Wire to actual message attachments from backend
+const attachments: any[] = [];
 </script>
 
 <template>

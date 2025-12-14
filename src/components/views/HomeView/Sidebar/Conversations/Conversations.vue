@@ -3,12 +3,13 @@ import type { IConversation } from "@src/types";
 import type { Ref } from "vue";
 
 import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
 import useStore from "@src/store/store";
-import { getActiveConversationId, getName } from "@src/utils";
+import { getName } from "@src/utils";
 
 import { PencilSquareIcon } from "@heroicons/vue/24/outline";
-import ComposeModal from "@src/components/shared/modals/ComposeModal/ComposeModal.vue";
+import NewChatModal from "@src/components/shared/modals/NewChatModal.vue";
 import NoConversation from "@src/components/states/empty-states/NoConversation.vue";
 import Circle2Lines from "@src/components/states/loading-states/Circle2Lines.vue";
 import IconButton from "@src/components/ui/inputs/IconButton.vue";
@@ -19,6 +20,7 @@ import ConversationsList from "@src/components/views/HomeView/Sidebar/Conversati
 import SidebarHeader from "@src/components/views/HomeView/Sidebar/SidebarHeader.vue";
 
 const store = useStore();
+const route = useRoute();
 
 const keyword: Ref<string> = ref("");
 
@@ -27,13 +29,26 @@ const composeOpen = ref(false);
 // determines whether the archive is open or not
 const openArchive = ref(false);
 
+// (event) close the new chat modal.
+const closeNewChatModal = () => {
+  composeOpen.value = false;
+};
+
 // the filtered list of conversations.
-const filteredConversations: Ref<IConversation[]> = ref(store.conversations);
+const filteredConversations: Ref<IConversation[]> = ref([]);
 
 // filter the list of conversation based on search text.
-watch([keyword, openArchive], () => {
+watch([keyword, openArchive, () => store.conversations, () => store.archivedConversations], () => {
+  console.log('=== Conversations.vue WATCH triggered ===');
+  console.log('openArchive:', openArchive.value);
+  console.log('keyword:', keyword.value);
+  console.log('store.conversations (active):', store.conversations);
+  console.log('store.archivedConversations:', store.archivedConversations);
+  console.log('store.status:', store.status);
+  console.log('store.delayLoading:', store.delayLoading);
+  
   if (openArchive.value) {
-    // search conversations
+    // search archived conversations
     filteredConversations.value =
       store.archivedConversations?.filter(
         (conversation) =>
@@ -41,8 +56,9 @@ watch([keyword, openArchive], () => {
             ?.toLowerCase()
             .includes(keyword.value.toLowerCase()),
       ) || [];
+    console.log('Showing ARCHIVED conversations:', filteredConversations.value);
   } else {
-    // search archived conversations
+    // search all active conversations
     filteredConversations.value =
       store.conversations?.filter(
         (conversation) =>
@@ -50,21 +66,34 @@ watch([keyword, openArchive], () => {
             ?.toLowerCase()
             .includes(keyword.value.toLowerCase()),
       ) || [];
+    console.log('Showing ACTIVE conversations:', filteredConversations.value);
   }
-});
-
-// (event) close the compose modal.
-const closeComposeModal = () => {
-  composeOpen.value = false;
-};
+}, { immediate: true }); // Run immediately on component creation
 
 // if the active conversation is in the archive
 // then open the archive
-onMounted(() => {
-  let conversation = store.archivedConversations.find(
-    (conversation) => conversation.id === getActiveConversationId(),
-  );
-  if (conversation) openArchive.value = true;
+onMounted(async () => {
+  console.log('=== Conversations.vue onMounted ===');
+  
+  // Load archived conversations from backend
+  await store.loadArchivedConversations();
+  console.log('Archived conversations loaded:', store.archivedConversations);
+  
+  const activeConversationId = route.params.id ? Number(route.params.id) : undefined;
+  console.log('Active conversation ID from route:', activeConversationId);
+  
+  if (activeConversationId) {
+    let conversation = store.archivedConversations.find(
+      (conversation) => conversation.id === activeConversationId,
+    );
+    console.log('Found in archive?', conversation);
+    if (conversation) {
+      console.log('Opening archive view');
+      openArchive.value = true;
+    }
+  }
+  
+  console.log('Final openArchive state:', openArchive.value);
 });
 </script>
 
@@ -121,14 +150,13 @@ onMounted(() => {
         <div
           v-if="
             store.status === 'success' &&
-            !store.delayLoading &&
-            filteredConversations.length > 0
+            !store.delayLoading
           "
         >
           <FadeTransition>
             <component
               :is="ConversationsList"
-              :filtered-conversations="filteredConversations"
+              :conversations="filteredConversations"
               :key="openArchive ? 'archive' : 'active'"
             />
           </FadeTransition>
@@ -140,7 +168,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!--compose modal-->
-    <ComposeModal :open="composeOpen" :close-modal="closeComposeModal" />
+    <!--new chat modal-->
+    <NewChatModal :open="composeOpen" :close-modal="closeNewChatModal" />
   </div>
 </template>
