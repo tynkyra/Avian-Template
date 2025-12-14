@@ -29,6 +29,12 @@ const activeConversation = inject("activeConversation") as ComputedRef<IConversa
 // the content of the message.
 const value: Ref<string> = ref("");
 
+// track cursor position in textarea
+const cursorPosition = ref(0);
+
+// textarea element ref
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+
 // determines whether the app is recording or not.
 const recording = ref(false);
 
@@ -37,6 +43,12 @@ const showPicker = ref(false);
 
 // open modal used to send multiple attachments attachments.
 const openAttachmentsModal = ref(false);
+
+// File input ref for direct file selection
+const attachmentFileInputRef: Ref<HTMLInputElement | null> = ref(null);
+
+// Initial files to pass to modal
+const initialAttachmentFiles: Ref<File[]> = ref([]);
 
 // start and stop recording.
 const handleToggleRecording = () => {
@@ -118,10 +130,86 @@ const handleKeyDown = (event: KeyboardEvent) => {
     handleSendMessage();
   }
 };
+
+// handle emoji selection
+const handleEmojiSelect = (emoji: string) => {
+  const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+  if (textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = value.value;
+    
+    // Insert emoji at cursor position
+    value.value = text.substring(0, start) + emoji + text.substring(end);
+    
+    // Set cursor position after the inserted emoji
+    const newPosition = start + emoji.length;
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  } else {
+    // Fallback: append to end if textarea not found
+    value.value += emoji;
+  }
+};
+
+// Handle attachments from modal
+const handleSendAttachments = async (attachments: File[], caption: string) => {
+  if (!activeConversation.value) {
+    console.error('No active conversation');
+    return;
+  }
+  
+  console.log('Sending attachments:', attachments.length, 'Caption:', caption);
+  
+  try {
+    // Send attachments using store method
+    await store.sendAttachments(
+      activeConversation.value.id,
+      attachments,
+      caption || undefined
+    );
+    
+    console.log('✅ Attachments sent successfully');
+    
+  } catch (error) {
+    console.error('Failed to send attachments:', error);
+    alert('Failed to send attachments. Please try again.');
+  }
+  
+  // Clear initial files and close modal
+  initialAttachmentFiles.value = [];
+  openAttachmentsModal.value = false;
+};
+
+// Open file picker directly
+const handleOpenFilePicker = () => {
+  attachmentFileInputRef.value?.click();
+};
+
+// Handle direct file selection
+const handleDirectFileSelection = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const files = target.files;
+  
+  if (files && files.length > 0) {
+    // Set initial files for modal
+    initialAttachmentFiles.value = Array.from(files);
+    // Open modal with selected files
+    openAttachmentsModal.value = true;
+  }
+};
+
+// Close modal handler that clears initial files
+const handleCloseAttachmentsModal = () => {
+  initialAttachmentFiles.value = [];
+  openAttachmentsModal.value = false;
+};
 </script>
 
 <template>
-  <div class="w-full">
+  <div class="w-full xs:pb-16 md:pb-0">
     <!--selected reply display-->
     <div
       class="relative transition-all duration-200"
@@ -144,7 +232,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           class="ic-btn-ghost-primary w-7 h-7 md:mr-5 xs:mr-4"
           title="open select attachments modal"
           aria-label="open select attachments modal"
-          @click="openAttachmentsModal = true"
+          @click="handleOpenFilePicker"
         >
           <PaperClipIcon class="w-[1.25rem] h-[1.25rem]" />
         </IconButton>
@@ -216,7 +304,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
                 class="absolute z-10 bottom-13.75 md:right-0 xs:right-[-5rem] mt-2"
               >
                 <div role="none">
-                  <EmojiPicker :show="showPicker" />
+                  <EmojiPicker :show="showPicker" @select-emoji="handleEmojiSelect" />
                 </div>
               </div>
             </ScaleTransition>
@@ -276,10 +364,21 @@ const handleKeyDown = (event: KeyboardEvent) => {
         </IconButton>
       </div>
     </div>
-
     <AttachmentsModal
       :open="openAttachmentsModal"
-      :close-modal="() => (openAttachmentsModal = false)"
+      :close-modal="handleCloseAttachmentsModal"
+      :initial-files="initialAttachmentFiles"
+      @send-attachments="handleSendAttachments"
+    />
+    
+    <!-- Hidden file input for direct attachment selection -->
+    <input
+      ref="attachmentFileInputRef"
+      type="file"
+      multiple
+      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+      @change="handleDirectFileSelection"
+      class="hidden"
     />
   </div>
 </template>

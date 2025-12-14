@@ -9,6 +9,7 @@ import {
   getAvatar,
   getConversationIndex,
   getName,
+  getInitials,
   hasAttachments,
   shorten,
 } from "@src/utils";
@@ -137,9 +138,18 @@ const isActive = computed(
       <!--profile image-->
       <div class="mr-4">
         <div
+          v-if="getAvatar(props.conversation)"
           :style="{ backgroundImage: `url(${getAvatar(props.conversation)})` }"
           class="w-7 h-7 rounded-full bg-cover bg-center"
         ></div>
+        <div
+          v-else
+          class="w-7 h-7 rounded-full bg-gray-400 dark:bg-gray-600 flex items-center justify-center"
+        >
+          <span class="text-xs font-semibold text-white">
+            {{ getInitials(props.conversation) }}
+          </span>
+        </div>
       </div>
 
       <div class="w-full flex flex-col">

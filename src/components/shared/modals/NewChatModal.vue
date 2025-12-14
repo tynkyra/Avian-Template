@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
 
 import useStore from "@src/store/store";
+import { avatarLibrary, getAvatarImageById, getAvatarNameById } from "@src/avatarConfig";
 
 import Button from "@src/components/ui/inputs/Button.vue";
 import IconButton from "@src/components/ui/inputs/IconButton.vue";
 import Modal from "@src/components/ui/utils/Modal.vue";
-import { PhotoIcon, XMarkIcon, PencilIcon } from "@heroicons/vue/24/outline";
+import TextInput from "@src/components/ui/inputs/TextInput.vue";
+import { PhotoIcon, XMarkIcon, PencilIcon, PlusIcon } from "@heroicons/vue/24/outline";
 
 const props = defineProps<{
   open: boolean;
@@ -18,12 +20,40 @@ const props = defineProps<{
 const store = useStore();
 const router = useRouter();
 
+// Calculate next available chat number
+const getNextChatTitle = () => {
+  const existingChats = store.conversations
+    .filter(c => c.type === 'self_chat')
+    .map(c => c.name || '');
+  
+  // Check if "New Chat" exists
+  if (!existingChats.some(name => name.toLowerCase() === 'new chat')) {
+    return 'New Chat';
+  }
+  
+  // Find the next available number
+  let counter = 1;
+  while (existingChats.some(name => name.toLowerCase() === `new chat ${counter}`)) {
+    counter++;
+  }
+  
+  return `New Chat ${counter}`;
+};
+
 // Chat form data
 const chatTitle = ref("New Chat");
 const isEditingTitle = ref(false);
 const selectedAvatarType = ref<"A" | "B">("A"); // Default to A (left avatar)
 const customAvatarFile: Ref<File | null> = ref(null);
 const customAvatarPreview = ref("");
+
+// Create avatar modal state
+const showCreateAvatarModal = ref(false);
+const newAvatarId = ref("");
+const newAvatarName = ref("");
+const newAvatarImage = ref("");
+const newAvatarFile: Ref<File | null> = ref(null);
+const newAvatarInputRef: Ref<HTMLInputElement | null> = ref(null);
 
 // Selected avatar images for each slot
 const selectedAvatarImages = ref({
@@ -40,136 +70,10 @@ const defaultGroupPicture = "👥"; // Default group emoji
 const fileInputRef: Ref<HTMLInputElement | null> = ref(null);
 const groupPictureInputRef: Ref<HTMLInputElement | null> = ref(null);
 
-// Avatar library with 10 Gundams and 9 Pokemon - replace image paths with your own
-const gundamAvatars = [
-  // Gundam Models (10 total)
-  {
-    id: "Grandpa",
-    name: "RX-78-2 Gundam",
-    image: "https://m.media-amazon.com/images/I/511hhV-IVzL._AC_UF894,1000_QL80_.jpg",
-  },
-  {
-    id: "Sazabi",
-    name: "MSN-04 Sazabi",
-    image: "https://cdnb.artstation.com/p/assets/images/images/059/201/687/large/thomas-fleury-sazabi.jpg?1675864924", // Replace with your image path
-    category: "Gundam"
-  },
-  {
-    id: "Nu-Gundam",
-    name: "RX-93 Nu Gundam",
-    image: "https://yoshstudios.com/wp-content/uploads/2025/08/Render_01-1.jpg", 
-    category: "Gundam"
-  },
-  {
-    id: "Barbatos",
-    name: "ASW-G-08 Gundam Barbatos",
-    image: "https://avatarfiles.alphacoders.com/378/378158.png", // Replace with your image path
-    category: "Gundam"
-  },
-  {
-    id: "Wing-Zero",
-    name: "XXXG-00W0 Wing Gundam Zero",
-    image: "https://www.gunjap.net/site/wp-content/uploads/2020/04/C9E85F15-DEEE-49A0-971D-322C3302CA07.jpeg", // Replace with your image path
-    category: "Gundam"
-  },
-  {
-    id: "Strike-Freedom",
-    name: "ZGMF-X20A Strike Freedom",
-    image: "https://images7.alphacoders.com/124/1243002.jpg", // Replace with your image path
-    category: "Gundam"
-  },
-  {
-    id: "Zaku-II",
-    name: "MS-06 Zaku II",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSATITRB5cJ76HtwG82036KRi49WHBOIVxG2Q&s",
-    category: "Gundam"
-  },
-  {
-    id: "Exia",
-    name: "GN-001 Gundam Exia",
-    image: "https://i.pinimg.com/474x/7f/d2/9a/7fd29a6ae9f141feec1eef99783f3bf7.jpg", // Replace with your image path
-    category: "Gundam"
-  },
-  {
-    id: "Unicorn",
-    name: "RX-0 Unicorn Gundam",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTKllQOwtk5xt1tWHbCe6msij6MerAkrJcUYg&s", // Replace with your image path
-    category: "Gundam"
-  },
-  {
-    id: "Astray-Red",
-    name: "MBF-P02 Gundam Astray Red Frame",
-    image: "https://mir-s3-cdn-cf.behance.net/project_modules/disp/7412ae67730913.5b4475d4ea08a.jpg", // Replace with a reliable image path
-    category: "Gundam"
-  },
-  // Pokemon (9 total)
-  {
-    id: "Pikachu",
-    name: "Pikachu",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-UVcF-Ajwj5B0zkqNW97jBGO_kbWulw7KsA&s", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Snorlax",
-    name: "Snorlax",
-    image: "https://i.ebayimg.com/00/s/MTI0MFgxNDI0/z/5nIAAOSw4zxl-lK4/$_57.PNG?set_id=8800005007", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Gardevoir",
-    name: "Gardevoir",
-    image: "https://avatarfiles.alphacoders.com/375/thumb-1920-375356.png", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Ceruledge",
-    name: "Ceruledge",
-    image: "https://pbs.twimg.com/media/FkBiL0eXkAEMRZq.png", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Rowlett",
-    name: "Rowlett",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQN0N6XVFBmfmvq-Y7Qb-DexVxdm6kHJIaJkg&s", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Decidueye",
-    name: "Decidueye",
-    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSSNS76LF6xwzHHyN44OaAm7df9X-ZXn8JMA&s", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Garchomp",
-    name: "Garchomp",
-    image: "https://i.pinimg.com/736x/8b/1e/4f/8b1e4f2de83c151e642e9f8299e225f1.jpg", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Rayquaza",
-    name: "Rayquaza",
-    image: "https://avatarfiles.alphacoders.com/376/thumb-1920-376165.png", // Replace with your image path
-    category: "Pokemon"
-  },
-  {
-    id: "Dialga",
-    name: "Dialga",
-    image: "https://pm1.aminoapps.com/6130/b75a109d5e540c97754bcecb42f79ca11a19ae9d_hq.jpg", // Replace with your image path
-    category: "Pokemon"
-  }
-];
-
-// Get avatar image by ID
-const getAvatarImage = (avatarId: string) => {
-  const avatar = gundamAvatars.find(a => a.id === avatarId);
-  return avatar ? avatar.image : gundamAvatars[0].image;
-};
-
-// Get avatar name by ID
-const getAvatarName = (avatarId: string) => {
-  const avatar = gundamAvatars.find(a => a.id === avatarId);
-  return avatar ? avatar.name : gundamAvatars[0].name;
-};
+// Use shared avatar library
+const gundamAvatars = avatarLibrary;
+const getAvatarImage = getAvatarImageById;
+const getAvatarName = getAvatarNameById;
 
 // Handle custom avatar upload
 const handleAvatarUpload = (event: Event) => {
@@ -288,8 +192,7 @@ const createNewChat = async () => {
     }
 
     // Get the group picture (chat display photo) with default fallback
-    const displayPhoto = groupPicturePreview.value || 
-                        "https://gundam-official.com/media/2_FREEDOM_414b8262a7/2_FREEDOM_414b8262a7.png";
+    const displayPhoto = groupPicturePreview.value || '';
     
     // Get the two selected avatars
     const avatarA = customAvatarPreview.value || getAvatarImage(selectedAvatarImages.value.A);
@@ -320,7 +223,7 @@ const createNewChat = async () => {
 
 // Reset form data
 const resetForm = () => {
-  chatTitle.value = "New Chat";
+  chatTitle.value = getNextChatTitle();
   isEditingTitle.value = false;
   selectedAvatarType.value = "A"; // Reset to default A
   selectedAvatarImages.value = {
@@ -346,6 +249,81 @@ const currentAvatarPreview = computed(() => {
   }
   return getAvatarImage(selectedAvatarImages.value[selectedAvatarType.value]);
 });
+
+// Open create avatar modal
+const openCreateAvatarModal = () => {
+  showCreateAvatarModal.value = true;
+};
+
+// Close create avatar modal
+const closeCreateAvatarModal = () => {
+  showCreateAvatarModal.value = false;
+  newAvatarId.value = "";
+  newAvatarName.value = "";
+  newAvatarImage.value = "";
+  newAvatarFile.value = null;
+};
+
+// Handle new avatar image upload
+const handleNewAvatarImageUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (file) {
+    newAvatarFile.value = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      newAvatarImage.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+// Auto-sync avatar name with ID
+const handleAvatarIdChange = () => {
+  // Always sync name with ID
+  newAvatarName.value = newAvatarId.value;
+};
+
+// Watch for Avatar ID changes
+watch(newAvatarId, (newValue) => {
+  newAvatarName.value = newValue;
+});
+
+// Watch for modal open to update chat title
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    chatTitle.value = getNextChatTitle();
+  }
+});
+
+// Create new avatar
+const createNewAvatar = () => {
+  if (!newAvatarId.value.trim() || !newAvatarImage.value) {
+    alert("Please provide an Avatar ID and upload an image.");
+    return;
+  }
+
+  // Use avatar ID as name if name is empty
+  const finalName = newAvatarName.value.trim() || newAvatarId.value.trim();
+
+  // Add to avatar library with category
+  avatarLibrary.push({
+    id: newAvatarId.value.trim(),
+    name: finalName,
+    image: newAvatarImage.value,
+    category: "Custom"
+  });
+
+  console.log('New avatar added to library:', avatarLibrary[avatarLibrary.length - 1]);
+  console.log('Total avatars:', avatarLibrary.length);
+
+  // Select the newly created avatar
+  selectAvatarFromGallery(newAvatarId.value.trim());
+
+  // Close modal
+  closeCreateAvatarModal();
+};
 </script>
 
 <template>
@@ -435,7 +413,7 @@ const currentAvatarPreview = computed(() => {
                     class="w-full h-full object-cover"
                   />
                 </button>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ selectedAvatarImages.A }}</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-3">{{ selectedAvatarImages.A }}</p>
               </div>
               
               <div class="text-center">
@@ -455,7 +433,7 @@ const currentAvatarPreview = computed(() => {
                     class="w-full h-full object-cover"
                   />
                 </button>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">{{ selectedAvatarImages.B }}</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-3">{{ selectedAvatarImages.B }}</p>
               </div>
             </div>
 
@@ -470,9 +448,9 @@ const currentAvatarPreview = computed(() => {
             <div class="border-t border-gray-200 dark:border-gray-600 pt-4">
               <p class="body-2 text-black/70 dark:text-white/70 mb-3 font-semibold">Choose Avatar for {{ selectedAvatarImages[selectedAvatarType] }}:</p>
               
-              <div class="grid grid-cols-4 gap-6 max-h-64 overflow-y-auto justify-items-center px-4">
+              <div class="grid xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-4 xs:gap-3 max-h-64 overflow-y-auto justify-items-center px-2">
                 <div
-                  v-for="avatar in gundamAvatars.slice(0, 19)"
+                  v-for="avatar in gundamAvatars"
                   :key="avatar.id"
                   class="flex flex-col items-center gap-1"
                 >
@@ -497,16 +475,16 @@ const currentAvatarPreview = computed(() => {
                   <span class="text-xs text-gray-600 dark:text-gray-400 text-center">{{ avatar.id }}</span>
                 </div>
                 
-                <!-- Upload custom avatar option -->
+                <!-- Create custom avatar option -->
                 <div class="flex flex-col items-center gap-1">
                   <button
-                    @click="openFilePicker"
+                    @click="openCreateAvatarModal"
                     class="w-11 h-11 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-500 flex items-center justify-center bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all hover:scale-110"
-                    title="Upload custom avatar"
+                    title="Create custom avatar"
                   >
-                    <PhotoIcon class="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <PlusIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
                   </button>
-                  <span class="text-xs text-gray-600 dark:text-gray-400 text-center">Upload</span>
+                  <span class="text-xs text-gray-600 dark:text-gray-400 text-center">Create</span>
                 </div>
               </div>
             </div>
@@ -543,6 +521,104 @@ const currentAvatarPreview = computed(() => {
               class="filled-primary py-2 px-6"
             >
               Create Chat
+            </Button>
+          </div>
+        </div>
+      </div>
+    </template>
+  </Modal>
+
+  <!-- Create Avatar Modal -->
+  <Modal :open="showCreateAvatarModal" :close-modal="closeCreateAvatarModal">
+    <template v-slot:content>
+      <div class="w-96 bg-white dark:bg-gray-800 rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="heading-1 text-black/70 dark:text-white/70">Create New Avatar</h2>
+          <IconButton
+            @click="closeCreateAvatarModal"
+            class="ic-btn-ghost-primary w-8 h-8"
+            aria-label="Close modal"
+            title="Close"
+          >
+            <XMarkIcon class="w-5 h-5" />
+          </IconButton>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Avatar Image Upload -->
+          <div>
+            <label class="block body-2 text-black/70 dark:text-white/70 mb-2 font-semibold">
+              Avatar Image <span class="text-red-500">*</span>
+            </label>
+            <div class="flex items-center gap-4">
+              <button
+                @click="() => newAvatarInputRef?.click()"
+                class="w-20 h-20 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-500 flex items-center justify-center bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all overflow-hidden"
+              >
+                <img v-if="newAvatarImage" :src="newAvatarImage" alt="Preview" class="w-full h-full object-cover" />
+                <PhotoIcon v-else class="w-8 h-8 text-gray-500 dark:text-gray-400" />
+              </button>
+              <div class="flex-1">
+                <Button
+                  @click="() => newAvatarInputRef?.click()"
+                  class="outlined-secondary py-2 px-4 w-full"
+                >
+                  {{ newAvatarImage ? 'Change Image' : 'Upload Image' }}
+                </Button>
+              </div>
+            </div>
+            <input
+              ref="newAvatarInputRef"
+              type="file"
+              accept="image/*"
+              @change="handleNewAvatarImageUpload"
+              class="hidden"
+            />
+          </div>
+
+          <!-- Avatar ID -->
+          <div>
+            <label class="block body-2 text-black/70 dark:text-white/70 mb-2 font-semibold">
+              Avatar ID <span class="text-red-500">*</span>
+            </label>
+            <TextInput
+              :value="newAvatarId"
+              @valueChanged="(val) => newAvatarId = val"
+              placeholder="e.g., Gundam, Zaku"
+              class="w-full"
+            />
+          </div>
+
+          <!-- Avatar Name (Optional) -->
+          <div>
+            <label class="block body-2 text-black/70 dark:text-white/70 mb-2 font-semibold">
+              Avatar Name <span class="text-gray-500 text-xs">(Optional)</span>
+            </label>
+            <TextInput
+              :value="newAvatarName"
+              @valueChanged="(val) => newAvatarName = val"
+              :placeholder="newAvatarId || 'Auto-filled from ID'"
+              class="w-full"
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Defaults to Avatar ID if left empty
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex justify-end gap-3 pt-4">
+            <Button
+              @click="closeCreateAvatarModal"
+              class="outlined-secondary py-2 px-6"
+            >
+              Cancel
+            </Button>
+            <Button
+              @click="createNewAvatar"
+              class="filled-primary py-2 px-6"
+              :disabled="!newAvatarId.trim() || !newAvatarImage"
+            >
+              Create Avatar
             </Button>
           </div>
         </div>

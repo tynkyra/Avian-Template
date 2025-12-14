@@ -9,6 +9,10 @@ const props = defineProps<{
   show?: boolean;
 }>();
 
+const emit = defineEmits<{
+  selectEmoji: [emoji: string];
+}>();
+
 // selected emoji groups
 const activeTab = ref("people");
 
@@ -37,7 +41,12 @@ const handleActiveTabChange = (tab: string) => {
     <SearchInput class="w-full mb-5 rounded-[.75rem]" v-model="keyword" />
 
     <!--Emojis-->
-    <Emojis :keyword="keyword" :active-tab="activeTab" class="w-full mb-5" />
+    <Emojis
+      :keyword="keyword"
+      :active-tab="activeTab"
+      class="w-full mb-5"
+      @select-emoji="(emoji) => emit('selectEmoji', emoji)"
+    />
 
     <!--Skin tones-->
     <EmojiSkinTones class="w-full" />

@@ -112,6 +112,18 @@ class ApiService {
     });
   }
 
+  async updateConversation(conversationId: number, data: {
+    name?: string;
+    displayPhoto?: string;
+    avatarA?: string;
+    avatarB?: string;
+  }): Promise<IConversation> {
+    return this.request<IConversation>(`/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   async archiveConversation(conversationId: number, archived: boolean): Promise<{ success: boolean; archived: boolean }> {
     return this.request<{ success: boolean; archived: boolean }>(`/conversations/${conversationId}/archive`, {
       method: 'PATCH',
@@ -155,6 +167,56 @@ class ApiService {
     });
     console.log('[API Service] Received message response:', result);
     return result;
+  }
+
+  async sendAttachments(data: {
+    conversationId: number;
+    files: File[];
+    caption?: string;
+    avatarUrl?: string;
+  }): Promise<IMessage> {
+    const formData = new FormData();
+    
+    // Add files to FormData
+    data.files.forEach((file) => {
+      formData.append('files', file);
+    });
+    
+    // Add other data
+    formData.append('conversationId', data.conversationId.toString());
+    if (data.caption) {
+      formData.append('caption', data.caption);
+    }
+    if (data.avatarUrl) {
+      formData.append('avatarUrl', data.avatarUrl);
+    }
+    
+    // Use fetch directly for FormData (don't set Content-Type header)
+    const config: RequestInit = {
+      method: 'POST',
+      headers: {
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      },
+      body: formData,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/messages/attachments`, config);
+
+    if (!response.ok) {
+      let errorBody: any = null;
+      try {
+        errorBody = await response.json();
+      } catch (e) {
+        // ignore JSON parse error
+      }
+      const message = errorBody?.error || errorBody?.message || `Request failed (${response.status})`;
+      const err = new Error(message);
+      (err as any).status = response.status;
+      (err as any).body = errorBody;
+      throw err;
+    }
+
+    return response.json();
   }
 
   async markMessageAsRead(messageId: number): Promise<void> {

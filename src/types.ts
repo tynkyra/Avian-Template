@@ -61,6 +61,9 @@ export interface IConversation {
   type: string;
   name?: string;
   avatar?: string;
+  displayPhoto?: string;
+  avatarA?: string;
+  avatarB?: string;
   admins?: number[];
   contacts: IContact[];
   messages: IMessage[];

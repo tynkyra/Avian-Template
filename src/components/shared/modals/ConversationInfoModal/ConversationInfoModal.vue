@@ -61,7 +61,12 @@ const handleChangeActiveTab = (event: {
   <Modal :open="props.open" :close-modal="props.closeModal">
     <template v-slot:content>
       <div class="overflow-x-hidden">
-        <div class="w-75 bg-white dark:bg-gray-800 rounded py-6">
+        <div 
+          :class="[
+            'bg-white dark:bg-gray-800 rounded py-6',
+            activePageName === 'edit-group' ? 'w-[28rem] max-h-[90vh] overflow-y-auto' : 'w-75'
+          ]"
+        >
           <!--content-->
           <SlideTransition :animation="animation">
             <component

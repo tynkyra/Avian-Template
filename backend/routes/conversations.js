@@ -48,7 +48,7 @@ router.get('/', (req, res) => {
 
           // Get recent messages
           db.all(`
-            SELECT m.id, m.type, m.content, m.reply_to as replyTo, m.state, m.created_at as date,
+            SELECT m.id, m.type, m.content, m.reply_to as replyTo, m.state, m.avatar_url as avatarUrl, m.created_at as date,
                    u.id as sender_id, u.first_name as sender_firstName, u.last_name as sender_lastName,
                    u.email as sender_email, u.avatar as sender_avatar, u.last_seen as sender_lastSeen
             FROM messages m
@@ -71,7 +71,7 @@ router.get('/', (req, res) => {
                 firstName: msg.sender_firstName,
                 lastName: msg.sender_lastName,
                 email: msg.sender_email,
-                avatar: msg.sender_avatar,
+                avatar: msg.avatarUrl || msg.sender_avatar,
                 lastSeen: msg.sender_lastSeen
               }
             })).reverse();
@@ -205,6 +205,213 @@ router.post('/', (req, res) => {
       });
 
       res.status(201).json({ id: conversationId, message: 'Conversation created' });
+    }
+  );
+});
+
+// Update conversation details
+router.patch('/:conversationId', (req, res) => {
+  const conversationId = req.params.conversationId;
+  const userId = req.user.userId;
+  const { name, displayPhoto, avatarA, avatarB } = req.body;
+
+  console.log('PATCH /conversations/:id - Updating conversation:', conversationId);
+  console.log('Updates:', { name, displayPhoto, avatarA, avatarB });
+
+  // Check if user is a participant
+  db.get(
+    'SELECT user_id FROM conversation_participants WHERE conversation_id = ? AND user_id = ?',
+    [conversationId, userId],
+    (err, participant) => {
+      if (err) {
+        console.error('Error checking participant:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (!participant) {
+        return res.status(403).json({ error: 'Not authorized to update this conversation' });
+      }
+
+      // Build update query dynamically based on provided fields
+      const updates = [];
+      const params = [];
+
+      if (name !== undefined) {
+        updates.push('name = ?');
+        params.push(name);
+      }
+      if (displayPhoto !== undefined) {
+        updates.push('display_photo = ?');
+        params.push(displayPhoto);
+      }
+      if (avatarA !== undefined) {
+        updates.push('avatar_a = ?');
+        params.push(avatarA);
+      }
+      if (avatarB !== undefined) {
+        updates.push('avatar_b = ?');
+        params.push(avatarB);
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ error: 'No fields to update' });
+      }
+
+      // If avatars are being updated, get the old values first before updating
+      if (avatarA !== undefined || avatarB !== undefined) {
+        db.get(
+          'SELECT avatar_a, avatar_b FROM conversations WHERE id = ?',
+          [conversationId],
+          (err, oldConversation) => {
+            if (err) {
+              console.error('Error fetching old conversation:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+
+            const oldAvatarA = oldConversation?.avatar_a;
+            const oldAvatarB = oldConversation?.avatar_b;
+
+            console.log('Old avatars:', { oldAvatarA, oldAvatarB });
+            console.log('New avatars:', { avatarA, avatarB });
+
+            // Now update the conversation
+            const updateParams = [...params, conversationId];
+            const query = `UPDATE conversations SET ${updates.join(', ')} WHERE id = ?`;
+            
+            db.run(query, updateParams, function(err) {
+              if (err) {
+                console.error('Error updating conversation:', err);
+                return res.status(500).json({ error: 'Failed to update conversation' });
+              }
+
+              console.log('Conversation updated, now updating messages...');
+
+              // Get all messages for this conversation to reassign avatars
+              db.all(
+                'SELECT id, avatar_url FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+                [conversationId],
+                (err, messages) => {
+                  if (err) {
+                    console.error('Error fetching messages for avatar update:', err);
+                    // Still return success
+                    return sendUpdatedConversation();
+                  }
+
+                  console.log(`Found ${messages.length} messages to update`);
+                  
+                  // Group messages by their current avatar to maintain conversation flow
+                  // Alternate between avatarA and avatarB based on message grouping
+                  const messageUpdatePromises = [];
+                  let currentAvatar = avatarA; // Start with avatarA
+                  let lastAvatarUrl = null;
+
+                  messages.forEach((msg, index) => {
+                    // If avatar changed from previous message, switch to other avatar
+                    if (lastAvatarUrl !== null && msg.avatar_url !== lastAvatarUrl) {
+                      currentAvatar = currentAvatar === avatarA ? avatarB : avatarA;
+                    }
+                    lastAvatarUrl = msg.avatar_url;
+
+                    // Update this message to use current avatar
+                    if (msg.avatar_url !== currentAvatar) {
+                      messageUpdatePromises.push(
+                        new Promise((resolve, reject) => {
+                          db.run(
+                            'UPDATE messages SET avatar_url = ? WHERE id = ?',
+                            [currentAvatar, msg.id],
+                            function(err) {
+                              if (err) {
+                                console.error(`Error updating message ${msg.id}:`, err);
+                                reject(err);
+                              } else {
+                                resolve();
+                              }
+                            }
+                          );
+                        })
+                      );
+                    }
+                  });
+
+                  console.log(`Updating ${messageUpdatePromises.length} messages`);
+
+                  // Wait for all message updates to complete
+                  Promise.all(messageUpdatePromises)
+                    .then(() => {
+                      console.log('All message updates completed');
+                      sendUpdatedConversation();
+                    })
+                    .catch((err) => {
+                      console.error('Error during message updates:', err);
+                      sendUpdatedConversation();
+                    });
+                }
+              );
+
+              function sendUpdatedConversation() {
+                // Fetch and return updated conversation
+                db.get(
+                  'SELECT id, type, name, display_photo, avatar_a, avatar_b, created_at FROM conversations WHERE id = ?',
+                  [conversationId],
+                  (err, conversation) => {
+                    if (err) {
+                      console.error('Error fetching updated conversation:', err);
+                      return res.status(500).json({ error: 'Failed to fetch updated conversation' });
+                    }
+
+                    console.log('Conversation updated successfully:', conversation);
+
+                    res.json({
+                      id: conversation.id,
+                      type: conversation.type,
+                      name: conversation.name,
+                      displayPhoto: conversation.display_photo,
+                      avatarA: conversation.avatar_a,
+                      avatarB: conversation.avatar_b,
+                      createdAt: conversation.created_at
+                    });
+                  }
+                );
+              }
+            });
+          }
+        );
+      } else {
+        // No avatar updates, just update the conversation normally
+        const updateParams = [...params, conversationId];
+        const query = `UPDATE conversations SET ${updates.join(', ')} WHERE id = ?`;
+        
+        db.run(query, updateParams, function(err) {
+          if (err) {
+            console.error('Error updating conversation:', err);
+            return res.status(500).json({ error: 'Failed to update conversation' });
+          }
+
+          // Fetch and return updated conversation
+          db.get(
+            'SELECT id, type, name, display_photo, avatar_a, avatar_b, created_at FROM conversations WHERE id = ?',
+            [conversationId],
+            (err, conversation) => {
+              if (err) {
+                console.error('Error fetching updated conversation:', err);
+                return res.status(500).json({ error: 'Failed to fetch updated conversation' });
+              }
+
+              console.log('Conversation updated successfully:', conversation);
+
+              res.json({
+                id: conversation.id,
+                type: conversation.type,
+                name: conversation.name,
+                displayPhoto: conversation.display_photo,
+                avatarA: conversation.avatar_a,
+                avatarB: conversation.avatar_b,
+                createdAt: conversation.created_at
+              });
+            }
+          );
+        });
+      }
     }
   );
 });

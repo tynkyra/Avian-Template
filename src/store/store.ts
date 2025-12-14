@@ -169,9 +169,8 @@ const useStore = defineStore("chat", () => {
       console.log('Store: Received active conversations:', data);
       console.log('Store: Avatar values:', data.map(c => ({ id: c.id, name: c.name, displayPhoto: (c as any).displayPhoto, avatarA: (c as any).avatarA, avatarB: (c as any).avatarB })));
       
-      // Sort conversations: newest first (by ID, which auto-increments)
-      data.sort((a, b) => b.id - a.id);
-      
+      // Backend already sorts by last_message_time DESC, so conversations with recent messages appear first
+      // New conversations without messages will appear at the bottom (NULL last_message_time)
       conversations.value = data;
       status.value = "success";
     } catch (error) {
@@ -209,8 +208,11 @@ const useStore = defineStore("chat", () => {
         // Move conversation to the top of the list
         const index = conversations.value.indexOf(conversation);
         if (index > 0) {
-          conversations.value.splice(index, 1);
-          conversations.value.unshift(conversation);
+          // Create a new array to trigger reactivity
+          const updated = [...conversations.value];
+          updated.splice(index, 1);
+          updated.unshift(conversation);
+          conversations.value = updated;
         }
       }
 
@@ -220,6 +222,49 @@ const useStore = defineStore("chat", () => {
       return message;
     } catch (error) {
       console.error('Failed to send message:', error);
+      throw error;
+    }
+  };
+
+  const sendAttachments = async (conversationId: number, files: File[], caption?: string) => {
+    try {
+      // Get the conversation to access its avatars
+      const conversation = conversations.value.find(c => c.id === conversationId);
+      
+      // Get the avatar URL based on which avatar is active
+      const avatarUrl = activeAvatar.value === 'A' 
+        ? (conversation as any)?.avatarA 
+        : (conversation as any)?.avatarB;
+      
+      console.log('[Store] Sending attachments with avatarUrl:', avatarUrl);
+      
+      const message = await apiService.sendAttachments({
+        conversationId,
+        files,
+        caption,
+        avatarUrl
+      });
+
+      // Add message to local store
+      if (conversation) {
+        conversation.messages.push(message);
+        
+        // Move conversation to the top of the list
+        const index = conversations.value.indexOf(conversation);
+        if (index > 0) {
+          const updated = [...conversations.value];
+          updated.splice(index, 1);
+          updated.unshift(conversation);
+          conversations.value = updated;
+        }
+      }
+
+      // Emit socket event for real-time updates
+      socketService.sendMessage({ ...message, conversationId });
+
+      return message;
+    } catch (error) {
+      console.error('Failed to send attachments:', error);
       throw error;
     }
   };
@@ -258,12 +303,49 @@ const useStore = defineStore("chat", () => {
         const conversation = conversations.value.find(c => c.id === result.id);
         if (conversation) {
           conversation.messages = messages;
+          
+          // Move the newly created conversation to the top of the list
+          const index = conversations.value.indexOf(conversation);
+          if (index > 0) {
+            const updated = [...conversations.value];
+            updated.splice(index, 1);
+            updated.unshift(conversation);
+            conversations.value = updated;
+          }
         }
       }
       
       return result;
     } catch (error) {
       console.error('Failed to create conversation:', error);
+      throw error;
+    }
+  };
+
+  const updateConversation = async (conversationId: number, updates: {
+    name?: string;
+    displayPhoto?: string;
+    avatarA?: string;
+    avatarB?: string;
+  }) => {
+    try {
+      const updatedConversation = await apiService.updateConversation(conversationId, updates);
+      
+      // Update the conversation in the local store
+      const index = conversations.value.findIndex(c => c.id === conversationId);
+      if (index !== -1) {
+        conversations.value[index] = { ...conversations.value[index], ...updatedConversation };
+      }
+      
+      // Also check archived conversations
+      const archivedIndex = archivedConversations.value.findIndex(c => c.id === conversationId);
+      if (archivedIndex !== -1) {
+        archivedConversations.value[archivedIndex] = { ...archivedConversations.value[archivedIndex], ...updatedConversation };
+      }
+      
+      return updatedConversation;
+    } catch (error) {
+      console.error('Failed to update conversation:', error);
       throw error;
     }
   };
@@ -441,8 +523,10 @@ const useStore = defineStore("chat", () => {
     loadConversations,
     loadArchivedConversations,
     sendMessage,
+    sendAttachments,
     addContact,
     createConversation,
+    updateConversation,
     archiveConversation,
     deleteConversation,
     deleteMessage,

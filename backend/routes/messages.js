@@ -1,7 +1,132 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { db } from '../database/init.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/attachments/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
+
+// Send attachments
+router.post('/attachments', upload.array('files', 10), (req, res) => {
+  const { conversationId, caption, avatarUrl } = req.body;
+  const senderId = req.user.userId;
+  const files = req.files;
+
+  if (!conversationId) {
+    return res.status(400).json({ error: 'Conversation ID is required' });
+  }
+
+  if (!files || files.length === 0) {
+    return res.status(400).json({ error: 'At least one file is required' });
+  }
+
+  // Verify user is participant in conversation
+  db.get(
+    'SELECT id FROM conversation_participants WHERE conversation_id = ? AND user_id = ?',
+    [conversationId, senderId],
+    (err, participant) => {
+      if (err || !participant) {
+        return res.status(403).json({ error: 'Not authorized to send message to this conversation' });
+      }
+
+      // Create message with attachments
+      const content = caption || '';
+      db.run(
+        'INSERT INTO messages (conversation_id, sender_id, type, content, avatar_url) VALUES (?, ?, ?, ?, ?)',
+        [conversationId, senderId, 'attachment', content, avatarUrl],
+        function(err) {
+          if (err) {
+            console.error('[Backend] Insert error:', err);
+            return res.status(500).json({ error: 'Failed to send message' });
+          }
+
+          const messageId = this.lastID;
+
+          // Insert attachments
+          const attachmentPromises = files.map((file) => {
+            return new Promise((resolve, reject) => {
+              const fileType = file.mimetype.startsWith('image/') ? 'image' :
+                              file.mimetype.startsWith('video/') ? 'video' :
+                              file.mimetype.startsWith('audio/') ? 'audio' : 'file';
+              
+              const fileUrl = `http://127.0.0.1:3003/uploads/attachments/${file.filename}`;
+              const fileSizeKB = (file.size / 1024).toFixed(2);
+
+              db.run(
+                'INSERT INTO attachments (message_id, type, name, size, url) VALUES (?, ?, ?, ?, ?)',
+                [messageId, fileType, file.originalname, fileSizeKB + ' KB', fileUrl],
+                function(err) {
+                  if (err) reject(err);
+                  else resolve({ id: this.lastID, type: fileType, name: file.originalname, size: fileSizeKB + ' KB', url: fileUrl });
+                }
+              );
+            });
+          });
+
+          Promise.all(attachmentPromises)
+            .then((attachments) => {
+              // Get the created message with sender info and attachments
+              db.get(`
+                SELECT m.id, m.type, m.content, m.reply_to as replyTo, m.state, m.avatar_url as avatarUrl, m.created_at as date,
+                       u.id as sender_id, u.first_name as sender_firstName, u.last_name as sender_lastName,
+                       u.email as sender_email, u.avatar as sender_avatar, u.last_seen as sender_lastSeen
+                FROM messages m
+                JOIN users u ON m.sender_id = u.id
+                WHERE m.id = ?
+              `, [messageId], (err, message) => {
+                if (err) {
+                  return res.status(500).json({ error: 'Message sent but failed to retrieve' });
+                }
+
+                const formattedMessage = {
+                  id: message.id,
+                  type: message.type,
+                  content: message.content || undefined,
+                  date: message.date,
+                  replyTo: message.replyTo,
+                  state: message.state,
+                  attachments: attachments,
+                  sender: {
+                    id: message.sender_id,
+                    firstName: message.sender_firstName,
+                    lastName: message.sender_lastName,
+                    email: message.sender_email,
+                    avatar: message.avatarUrl || message.sender_avatar,
+                    lastSeen: message.sender_lastSeen
+                  }
+                };
+
+                res.status(201).json(formattedMessage);
+              });
+            })
+            .catch((err) => {
+              console.error('[Backend] Attachment insert error:', err);
+              res.status(500).json({ error: 'Failed to save attachments' });
+            });
+        }
+      );
+    }
+  );
+});
 
 // Send a message
 router.post('/', (req, res) => {
@@ -118,25 +243,60 @@ router.get('/:conversationId', (req, res) => {
             console.log('[Backend GET] Raw messages from DB:', messages.map(m => ({ id: m.id, avatarUrl: m.avatarUrl, sender_avatar: m.sender_avatar })));
             console.log('[Backend GET] Conversation avatars:', { avatar_a: conversation?.avatar_a, avatar_b: conversation?.avatar_b });
 
-            const formattedMessages = messages.map(msg => ({
-              id: msg.id,
-              type: msg.type,
-              content: msg.content,
-              date: msg.date,
-              replyTo: msg.replyTo,
-              state: msg.state,
-              sender: {
-                id: msg.sender_id,
-                firstName: msg.sender_firstName,
-                lastName: msg.sender_lastName,
-                email: msg.sender_email,
-                // Use avatar_url if available, otherwise fallback to sender_avatar, then conversation's avatar_a
-                avatar: msg.avatarUrl || msg.sender_avatar || conversation?.avatar_a || null,
-                lastSeen: msg.sender_lastSeen
-              }
-            })).reverse();
+            // Get attachments for all messages
+            const messageIds = messages.map(m => m.id);
+            if (messageIds.length === 0) {
+              return res.json([]);
+            }
 
-            res.json(formattedMessages);
+            db.all(`
+              SELECT id, message_id as messageId, type, name, size, url, thumbnail
+              FROM attachments
+              WHERE message_id IN (${messageIds.map(() => '?').join(',')})
+            `, messageIds, (attachErr, attachments) => {
+              if (attachErr) {
+                console.error('[Backend GET] Error fetching attachments:', attachErr);
+              }
+
+              // Group attachments by message ID
+              const attachmentsByMessage = {};
+              if (attachments) {
+                attachments.forEach(att => {
+                  if (!attachmentsByMessage[att.messageId]) {
+                    attachmentsByMessage[att.messageId] = [];
+                  }
+                  attachmentsByMessage[att.messageId].push({
+                    id: att.id,
+                    type: att.type,
+                    name: att.name,
+                    size: att.size,
+                    url: att.url,
+                    thumbnail: att.thumbnail
+                  });
+                });
+              }
+
+              const formattedMessages = messages.map(msg => ({
+                id: msg.id,
+                type: msg.type,
+                content: msg.content,
+                date: msg.date,
+                replyTo: msg.replyTo,
+                state: msg.state,
+                attachments: attachmentsByMessage[msg.id] || undefined,
+                sender: {
+                  id: msg.sender_id,
+                  firstName: msg.sender_firstName,
+                  lastName: msg.sender_lastName,
+                  email: msg.sender_email,
+                  // Use avatar_url if available, otherwise fallback to sender_avatar, then conversation's avatar_a
+                  avatar: msg.avatarUrl || msg.sender_avatar || conversation?.avatar_a || null,
+                  lastSeen: msg.sender_lastSeen
+                }
+              })).reverse();
+
+              res.json(formattedMessages);
+            });
           });
         }
       );

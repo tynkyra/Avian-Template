@@ -100,7 +100,7 @@ const formatTime = (dateString: string): string => {
 
 <template>
   <div class="select-none">
-    <div class="xs:mb-6 md:mb-5 flex" :class="{ 'justify-end': props.self }">
+    <div class="xs:mb-3 md:mb-2 flex" :class="{ 'justify-end': props.self }">
       <!--avatar left (for Avatar B / non-self messages)-->
       <div v-if="!props.self" class="mr-4" :class="{ 'ml-[2.25rem]': props.followUp && !divider }">
         <div
@@ -147,7 +147,7 @@ const formatTime = (dateString: string): string => {
           <!--content-->
           <p
             v-if="props.message.content && props.message.type !== 'recording'"
-            class="body-2 outline-none text-black opacity-60 dark:text-white dark:opacity-70"
+            class="body-2 outline-none text-black opacity-100 dark:text-white dark:opacity-70"
             v-html="
               linkifyStr(props.message.content as string, {
                 className: props.self

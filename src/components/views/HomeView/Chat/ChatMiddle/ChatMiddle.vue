@@ -39,8 +39,8 @@ const isFollowUp = (index: number, previousIndex: number): boolean => {
     return false;
   } else {
     // For self-chat with avatarA/B, compare by avatar URL instead of sender ID
-    const conversationAvatarA = (activeConversation.value as any)?.avatarA;
-    const conversationAvatarB = (activeConversation.value as any)?.avatarB;
+    const conversationAvatarA = activeConversation.value?.avatarA;
+    const conversationAvatarB = activeConversation.value?.avatarB;
     
     if (conversationAvatarA && conversationAvatarB) {
       // Compare by avatar URL to distinguish between Avatar A and Avatar B
@@ -58,14 +58,14 @@ const isFollowUp = (index: number, previousIndex: number): boolean => {
 
 // checks whether the message is sent by the authenticated user.
 const isSelf = (message: IMessage): boolean => {
-  // For self-chat, check if message was sent by Avatar A (right side)
-  // Avatar A messages should be on the right, Avatar B on the left
-  const conversationAvatarA = (activeConversation.value as any)?.avatarA;
-  const conversationAvatarB = (activeConversation.value as any)?.avatarB;
+  // For self-chat, check if message was sent by Avatar B (right side)
+  // Avatar B messages should be on the right, Avatar A on the left
+  const conversationAvatarA = activeConversation.value?.avatarA;
+  const conversationAvatarB = activeConversation.value?.avatarB;
   
   // If this conversation has avatarA/B set, determine side by avatar
   if (conversationAvatarA && conversationAvatarB) {
-    return message.sender.avatar === conversationAvatarA;
+    return message.sender.avatar === conversationAvatarB;
   }
   
   // Otherwise, use the default logic
@@ -156,6 +156,8 @@ watch(
       <div
         v-for="(message, index) in activeConversation.messages"
         :key="message.id"
+        :id="`message-${message.id}`"
+        class="transition-colors duration-300"
       >
         <TimelineDivider 
           v-if="renderDivider(index, index - 1)" 

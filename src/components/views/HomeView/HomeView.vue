@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from "vue";
 import useStore from "@src/store/store";
 import { useRoute } from "vue-router";
 
@@ -8,6 +9,25 @@ import Sidebar from "@src/components/views/HomeView/Sidebar/Sidebar.vue";
 
 const store = useStore();
 const route = useRoute();
+
+// Sidebar visibility state for mobile
+const isSidebarOpen = ref(false);
+
+// Auto-close sidebar when navigating to a chat on mobile
+watch(() => route.params.id, (newId) => {
+  if (newId) {
+    isSidebarOpen.value = false;
+  }
+});
+
+// Toggle sidebar on mobile
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
+};
+
+// Provide toggle function to child components
+import { provide } from "vue";
+provide('toggleSidebar', toggleSidebar);
 </script>
 
 <template>
@@ -16,20 +36,35 @@ const route = useRoute();
       class="xs:relative md:static h-full flex xs:flex-col md:flex-row overflow-hidden"
     >
       <!--navigation-bar-->
-      <Navigation class="xs:order-1 md:order-none" />
+      <Navigation 
+        class="xs:order-last xs:fixed xs:bottom-0 xs:left-0 xs:right-0 md:order-first md:static xs:z-30 md:z-auto" 
+        @toggle-sidebar="toggleSidebar"
+      />
+
+      <!--sidebar overlay for mobile-->
+      <div
+        v-if="isSidebarOpen"
+        @click="isSidebarOpen = false"
+        class="fixed xs:top-0 xs:bottom-16 md:inset-0 left-0 right-0 bg-white dark:bg-gray-900 z-10 xs:block md:hidden"
+      ></div>
+      
       <!--sidebar-->
       <Sidebar
-        class="xs:grow-1 md:grow-0 xs:overflow-y-scroll md:overflow-visible scrollbar-hidden"
+        :class="[
+          'xs:fixed xs:top-0 xs:left-0 xs:bottom-16 xs:z-20 md:static md:z-auto',
+          'xs:transition-transform xs:duration-300 md:transition-none',
+          'xs:grow-0 md:grow-0 xs:overflow-y-scroll md:overflow-visible scrollbar-hidden',
+          isSidebarOpen ? 'xs:translate-x-0' : 'xs:-translate-x-full md:translate-x-0'
+        ]"
       />
+      
       <!--chat-->
       <div
         id="mainContent"
-        class="xs:absolute xs:z-10 md:static grow h-full xs:w-full md:w-fit scrollbar-hidden bg-white dark:bg-gray-800 transition-all duration-500"
-        :class="
-          route.params.id
-            ? ['xs:-left-[0rem]', 'xs:static']
-            : ['xs:left-250']
-        "
+        :class="[
+          'grow h-full xs:w-full md:w-fit scrollbar-hidden bg-white dark:bg-gray-800',
+          isSidebarOpen ? 'xs:hidden md:block' : 'xs:block'
+        ]"
         role="region"
       >
         <router-view v-slot="{ Component }">

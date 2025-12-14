@@ -36,8 +36,8 @@ const moved = ref(false);
 const attachments = computed(() => {
   let attachments = [];
 
-  if (conversation) {
-    for (let message of conversation.messages) {
+  if (conversation?.value && conversation.value.messages && Array.isArray(conversation.value.messages)) {
+    for (let message of conversation.value.messages) {
       if (message.attachments && hasAttachments(message)) {
         for (let attachment of message.attachments) {
           if (["video", "image"].includes(attachment.type)) {

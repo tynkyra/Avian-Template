@@ -23,6 +23,24 @@ export const getFullName = (contact: IContact, hyphen?: boolean) => {
 
 /**
  * get the other contact that is not the authenticated user.
+
+/**
+ * Get initials from conversation name
+ * @param conversation
+ * @returns String with initials (max 2 characters)
+ */
+export const getInitials = (conversation: IConversation) => {
+  const name = getName(conversation);
+  if (!name) return '';
+  
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+};
+
+/**
  * @param conversation
  * @returns A contact object representing the other user in the conversation.
  */

@@ -20,15 +20,18 @@ const store = useStore();
 
 const showDropdown = ref(false);
 
+const emit = defineEmits(['toggle-sidebar']);
+
 // (event) change the active sidebar component when clicking on a NavLink
 const handleActiveSidebarComponentChange = (value: string) => {
   store.activeSidebarComponent = value;
+  emit('toggle-sidebar'); // Open sidebar when clicking nav icons on mobile
 };
 </script>
 
 <template>
   <div
-    class="xs:w-full md:w-11 md:h-full md:py-7 xs:py-5 px-5 flex xs:flex-row md:flex-col items-center transition-all duration-500"
+    class="xs:w-full md:w-11 md:h-full md:py-7 xs:py-5 px-5 flex xs:flex-row md:flex-col items-center transition-all duration-500 bg-white dark:bg-gray-800"
   >
     <!--logo-->
     <Logo />

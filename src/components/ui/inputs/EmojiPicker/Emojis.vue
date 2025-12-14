@@ -35,6 +35,10 @@ const props = defineProps<{
   activeTab: string;
 }>();
 
+const emit = defineEmits<{
+  selectEmoji: [emoji: string];
+}>();
+
 const store = useStore();
 
 // emojis filtered by skin tone and keyword
@@ -93,7 +97,7 @@ onMounted(() => {
     <div v-for="[name, group] in Object.entries(filteredEmojis)" class="mb-6">
       <!--Group title-->
       <p
-        class="heading-2 text-black/70 dark:text-white/70 mb-4 dark:text-white"
+        class="heading-2 text-black/70 dark:text-white/70 mb-4 mt-2 dark:text-white"
       >
         {{ name }}
       </p>
@@ -102,9 +106,10 @@ onMounted(() => {
         <div v-for="emoji in group">
           <IconButton
             v-if="emoji && emoji.r"
-            class="ic-btn-ghost-gray w-7.5 h-7.5 mr-1"
+            class="ic-btn-ghost-gray w-8 h-8 mr-1 text-2xl"
             :title="emoji.n[0]"
             :aria-label="emoji.n[0]"
+            @click="emit('selectEmoji', unicodeToEmoji(emoji.r))"
           >
             {{ unicodeToEmoji(emoji.r) }}
           </IconButton>

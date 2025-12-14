@@ -14,6 +14,7 @@ import {
   ShareIcon,
   TrashIcon,
   UserIcon,
+  XMarkIcon,
 } from "@heroicons/vue/24/outline";
 import { ArrowUturnLeftIcon } from "@heroicons/vue/24/solid";
 import IconAndText from "@src/components/shared/blocks/IconAndText.vue";
@@ -52,17 +53,19 @@ const imageUrl = computed(() => {
         >
         <span v-else-if="conversation.type === 'group'">Group</span>
         <span v-else-if="conversation.type === 'broadcast'">Broadcast</span>
-        Info
+        Chat Info
       </p>
 
       <!--close button-->
-      <Button
+      <IconButton
         v-if="!props.contact"
         @click="props.closeModal"
-        class="outlined-danger ghost-text py-2 px-4"
+        class="ic-btn-ghost-primary w-8 h-8"
+        aria-label="Close modal"
+        title="Close"
       >
-        esc
-      </Button>
+        <XMarkIcon class="w-5 h-5" />
+      </IconButton>
 
       <!--return button-->
       <IconButton
@@ -83,7 +86,7 @@ const imageUrl = computed(() => {
 
     <!--top-->
     <div class="w-full p-5 pb-6">
-      <div class="flex">
+      <div class="flex items-center">
         <!--avatar-->
         <div class="mr-5">
           <button
@@ -101,32 +104,20 @@ const imageUrl = computed(() => {
         </div>
 
         <!--name-->
-        <div class="w-full flex justify-between">
+        <div class="w-full flex justify-between items-center">
           <div>
             <p
-              class="heading-2 text-black/70 dark:text-white/70 mb-3 mr-5 text-start"
+              class="heading-2 text-black/70 dark:text-white/70 text-start"
             >
               <span>
                 {{ getName(props.conversation) }}
               </span>
             </p>
-
-            <p
-              class="body-2 text-black/70 dark:text-white/70 font-extralight text-start"
-            >
-              <!--last seen-->
-              <!--or number of group members-->
-              {{
-                conversation.type === "couple" || props.contact
-                  ? "Last seen Dec 16, 2019"
-                  : `${conversation.contacts.length} Contacts`
-              }}
-            </p>
           </div>
 
           <IconButton
-            title="edit group"
-            v-if="['group', 'broadcast'].includes(conversation.type)"
+            title="edit chat"
+            v-if="['group', 'broadcast', 'self_chat'].includes(conversation.type)"
             class="ic-btn-ghost-primary w-7 h-7"
             @click="
               $emit('active-page-change', {
@@ -137,6 +128,23 @@ const imageUrl = computed(() => {
           >
             <PencilIcon class="w-5 h-5" />
           </IconButton>
+        </div>
+      </div>
+
+      <!-- Selected Avatars (for self_chat) -->
+      <div v-if="conversation.type === 'self_chat'" class="mt-4">
+        <p class="body-2 text-black/50 dark:text-white/50 mb-3 text-center">Avatar</p>
+        <div class="flex gap-3 justify-center">
+          <img
+            :src="conversation.avatarA"
+            alt="Avatar A"
+            class="w-8 h-8 rounded-full object-cover ring-2 ring-blue-500 p-0.5"
+          />
+          <img
+            :src="conversation.avatarB"
+            alt="Avatar B"
+            class="w-8 h-8 rounded-full object-cover ring-2 ring-yellow-500 p-0.5"
+          />
         </div>
       </div>
     </div>
