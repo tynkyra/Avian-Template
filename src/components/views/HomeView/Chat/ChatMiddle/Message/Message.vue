@@ -66,27 +66,43 @@ const contextConfig = {
 
 // decide whether to show or hide avatar next to the image.
 const hideAvatar = () => {
-  if (props.divider && !props.self) {
+  // Always show avatar for the first message or after a divider
+  if (props.divider) {
     return false;
-  } else {
-    if (props.followUp) {
-      return true;
-    }
-    if (props.self) {
-      return true;
-    }
   }
+  
+  // Hide avatar only for follow-up messages from the same sender
+  if (props.followUp) {
+    return true;
+  }
+  
+  // Show avatar for all other cases
+  return false;
 };
 
 // reply message
 const replyMessage = getMessageById(activeConversation, props.message.replyTo);
+
+// Format time as AM/PM
+const formatTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  
+  hours = hours % 12;
+  hours = hours ? hours : 12; // 0 should be 12
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+  
+  return `${hours}:${minutesStr} ${ampm}`;
+};
 </script>
 
 <template>
   <div class="select-none">
     <div class="xs:mb-6 md:mb-5 flex" :class="{ 'justify-end': props.self }">
-      <!--avatar-->
-      <div class="mr-4" :class="{ 'ml-[2.25rem]': props.followUp && !divider }">
+      <!--avatar left (for Avatar B / non-self messages)-->
+      <div v-if="!props.self" class="mr-4" :class="{ 'ml-[2.25rem]': props.followUp && !divider }">
         <div
           v-if="!hideAvatar()"
           :aria-label="getFullName(props.message.sender)"
@@ -174,15 +190,29 @@ const replyMessage = getMessageById(activeConversation, props.message.replyTo);
           />
         </div>
 
-        <!--date-->
+        <!--time-->
         <div :class="props.self ? ['ml-4', 'order-1'] : ['mr-4']">
-          <p class="body-1 text-black/70 dark:text-white/70 whitespace-pre">
-            {{ props.message.date }}
+          <p class="body-1 text-black/70 dark:text-white/70 whitespace-nowrap">
+            {{ formatTime(props.message.date) }}
           </p>
         </div>
 
         <!--read receipt-->
         <Receipt v-if="props.self" :state="props.message.state" />
+      </div>
+
+      <!--avatar right (for Avatar A / self messages)-->
+      <div v-if="props.self" class="ml-4" :class="{ 'mr-[2.25rem]': props.followUp && !divider }">
+        <div
+          v-if="!hideAvatar()"
+          :aria-label="getFullName(props.message.sender)"
+          class="outline-none"
+        >
+          <div
+            :style="{ backgroundImage: `url(${props.message.sender.avatar})` }"
+            class="w-[2.25rem] h-[2.25rem] bg-cover bg-center rounded-full"
+          ></div>
+        </div>
       </div>
     </div>
     <MessageContextMenu

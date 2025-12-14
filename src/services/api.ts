@@ -146,11 +146,15 @@ class ApiService {
     content: string;
     type?: string;
     replyTo?: number;
+    avatarUrl?: string;
   }): Promise<IMessage> {
-    return this.request<IMessage>('/messages', {
+    console.log('[API Service] Sending message with data:', data);
+    const result = await this.request<IMessage>('/messages', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    console.log('[API Service] Received message response:', result);
+    return result;
   }
 
   async markMessageAsRead(messageId: number): Promise<void> {

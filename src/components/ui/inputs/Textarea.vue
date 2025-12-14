@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 
 const emit = defineEmits(["update:modelValue"]);
 
 const props = defineProps<{
   id?: string;
   type?: string;
+  modelValue?: string;
   value?: string;
   name?: string;
   placeholder?: string;
@@ -26,9 +27,13 @@ const autoResize = () => {
 
 // (event) change the input value and the size of the textarea
 const handleInput = (event: any) => {
-  emit("update:modelValue", (event.target as HTMLInputElement).value);
+  const newValue = (event.target as HTMLInputElement).value;
+  emit("update:modelValue", newValue);
   autoResize();
 };
+
+// Get the current value (prefer modelValue for v-model, fallback to value)
+const currentValue = computed(() => props.modelValue !== undefined ? props.modelValue : props.value);
 </script>
 
 <template>
@@ -38,10 +43,8 @@ const handleInput = (event: any) => {
     class="text-input"
     :class="[props.bordered ? 'bordered-input' : 'ringed-input']"
     @input="handleInput"
-    :value="props.value"
+    :value="currentValue"
     :placeholder="props.placeholder"
     ref="textarea"
-  >
-  {{ props.value }}
-  </textarea>
+  ></textarea>
 </template>

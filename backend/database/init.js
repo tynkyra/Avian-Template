@@ -146,12 +146,25 @@ export const initDatabase = () => {
       content TEXT,
       reply_to INTEGER,
       state TEXT DEFAULT 'sent',
+      avatar_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (conversation_id) REFERENCES conversations (id),
       FOREIGN KEY (sender_id) REFERENCES users (id),
       FOREIGN KEY (reply_to) REFERENCES messages (id)
     )
   `);
+
+  // Add avatar_url column if it doesn't exist (migration)
+  db.run(`
+    ALTER TABLE messages ADD COLUMN avatar_url TEXT
+  `, (err) => {
+    if (err) {
+      // Column likely already exists
+      console.log('Note: avatar_url column already exists or error:', err.message);
+    } else {
+      console.log('✅ Added avatar_url column to messages table');
+    }
+  });
 
   // Message attachments
   db.run(`

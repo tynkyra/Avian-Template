@@ -2,8 +2,9 @@
 import type { Ref } from "vue";
 
 import useStore from "@src/store/store";
-import { computed, provide, ref } from "vue";
+import { computed, provide, ref, watch, onMounted } from "vue";
 import { useRoute } from "vue-router";
+import { apiService } from "@src/services/api";
 
 import NoChatSelected from "@src/components/states/empty-states/NoChatSelected.vue";
 import Spinner from "@src/components/states/loading-states/Spinner.vue";
@@ -23,16 +24,63 @@ const activeConversation = computed(() => {
   );
 
   if (activeConversation) {
+    console.log('[Chat.vue computed] Found conversation:', activeConversation.name, 'messages:', activeConversation.messages?.length);
     return activeConversation;
   } else {
-    return store.archivedConversations.find(
+    const archived = store.archivedConversations.find(
       (conversation) => conversation.id === activeConversationId,
     );
+    console.log('[Chat.vue computed] Found archived:', archived?.name, 'messages:', archived?.messages?.length);
+    return archived;
   }
 });
 
 // provide the active conversation to all children.
-provide("activeConversation", activeConversation.value);
+provide("activeConversation", activeConversation);
+
+// Debug template condition
+const shouldShowChat = computed(() => {
+  const hasRouteId = !!route.params.id;
+  const hasConversation = !!activeConversation.value;
+  console.log('[Chat.vue shouldShowChat]', {
+    hasRouteId,
+    hasConversation,
+    routeId: route.params.id,
+    conversationName: activeConversation.value?.name,
+    messageCount: activeConversation.value?.messages?.length,
+    storeStatus: store.status,
+    delayLoading: store.delayLoading
+  });
+  return hasRouteId && hasConversation;
+});
+
+// Load messages when conversation changes
+watch(() => route.params.id, async (newId) => {
+  if (newId) {
+    const conversationId = Number(newId);
+    console.log('[Chat.vue] Route changed to conversation:', conversationId);
+    
+    const conversation = store.conversations.find(c => c.id === conversationId) || 
+                        store.archivedConversations.find(c => c.id === conversationId);
+    
+    console.log('[Chat.vue] Found conversation:', conversation?.name, 'Current messages:', conversation?.messages?.length);
+    
+    if (conversation) {
+      // Always load messages to ensure we have the latest data
+      try {
+        console.log('[Chat.vue] Loading messages for conversation:', conversationId);
+        const messages = await apiService.getMessages(conversationId);
+        console.log('[Chat.vue] Loaded messages:', messages.length, messages);
+        conversation.messages = messages;
+        console.log('[Chat.vue] After assignment, conversation.messages:', conversation.messages?.length);
+      } catch (error) {
+        console.error('[Chat.vue] Failed to load messages:', error);
+      }
+    } else {
+      console.log('[Chat.vue] No conversation found for ID:', conversationId);
+    }
+  }
+}, { immediate: true });
 
 // determines whether select mode is enabled.
 const selectMode = ref(false);

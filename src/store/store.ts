@@ -178,21 +178,27 @@ const useStore = defineStore("chat", () => {
 
   const sendMessage = async (conversationId: number, content: string, type = 'text', replyTo?: number) => {
     try {
-      // Use the active avatar as the sender
-      const currentSender = activeAvatar.value === 'A' ? avatarA.value : avatarB.value;
+      // Get the conversation to access its avatars
+      const conversation = conversations.value.find(c => c.id === conversationId);
+      
+      // Get the avatar URL based on which avatar is active
+      const avatarUrl = activeAvatar.value === 'A' 
+        ? (conversation as any)?.avatarA 
+        : (conversation as any)?.avatarB;
+      
+      console.log('[Store] Sending message with avatarUrl:', avatarUrl, 'activeAvatar:', activeAvatar.value);
+      console.log('[Store] Conversation avatarA:', (conversation as any)?.avatarA);
+      console.log('[Store] Conversation avatarB:', (conversation as any)?.avatarB);
       
       const message = await apiService.sendMessage({
         conversationId,
         content,
         type,
-        replyTo
+        replyTo,
+        avatarUrl // Send the actual avatar URL
       });
 
-      // Override the sender with the current active avatar
-      message.sender = currentSender;
-
       // Add message to local store
-      const conversation = conversations.value.find(c => c.id === conversationId);
       if (conversation) {
         conversation.messages.push(message);
       }
@@ -232,8 +238,17 @@ const useStore = defineStore("chat", () => {
         avatarB
       });
       
-      // Reload conversations
+      // Reload conversations to get the new conversation with messages
       await loadConversations();
+      
+      // Load messages for the new conversation
+      if (result.id) {
+        const messages = await apiService.getMessages(result.id);
+        const conversation = conversations.value.find(c => c.id === result.id);
+        if (conversation) {
+          conversation.messages = messages;
+        }
+      }
       
       return result;
     } catch (error) {

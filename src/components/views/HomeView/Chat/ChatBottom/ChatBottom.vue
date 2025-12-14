@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { Ref } from "vue";
+import type { Ref, ComputedRef } from "vue";
 import type { IConversation } from "@src/types";
 
 import useStore from "@src/store/store";
-import { ref, inject, onMounted } from "vue";
+import { ref, inject, onMounted, watch } from "vue";
 import { getConversationIndex } from "@src/utils";
 
 import {
@@ -24,7 +24,7 @@ import Textarea from "@src/components/ui/inputs/Textarea.vue";
 
 const store = useStore();
 
-const activeConversation = <IConversation>inject("activeConversation");
+const activeConversation = inject("activeConversation") as ComputedRef<IConversation | undefined>;
 
 // the content of the message.
 const value: Ref<string> = ref("");
@@ -63,39 +63,39 @@ const handleClickOutside = (event: Event) => {
   }
 };
 
-// (event) set the draft message equals the content of the text area
-const handleSetDraft = () => {
-  if (!activeConversation) return;
-  const index = getConversationIndex(activeConversation.id);
-  if (index !== undefined) {
-    store.conversations[index].draftMessage = value.value;
-  }
-};
-
 onMounted(() => {
-  value.value = activeConversation?.draftMessage || '';
+  value.value = activeConversation.value?.draftMessage || '';
+});
+
+// Watch for changes to value and update draft
+watch(value, (newValue) => {
+  if (!activeConversation.value) return;
+  const index = getConversationIndex(activeConversation.value.id);
+  if (index !== undefined) {
+    store.conversations[index].draftMessage = newValue;
+  }
 });
 
 // send message function
 const handleSendMessage = async () => {
-  console.log('handleSendMessage called', { value: value.value, activeConversation });
+  console.log('handleSendMessage called', { value: value.value, activeConversation: activeConversation.value });
   
   if (!value.value.trim()) {
     console.log('Message is empty, skipping');
     return;
   }
   
-  if (!activeConversation) {
+  if (!activeConversation.value) {
     console.error('No active conversation');
     return;
   }
   
   try {
     console.log('Sending message:', value.value.trim());
-    await store.sendMessage(activeConversation.id, value.value.trim());
+    await store.sendMessage(activeConversation.value.id, value.value.trim());
     value.value = '';
     // Clear draft message
-    const index = getConversationIndex(activeConversation.id);
+    const index = getConversationIndex(activeConversation.value.id);
     if (index !== undefined) {
       store.conversations[index].draftMessage = '';
     }
@@ -106,6 +106,13 @@ const handleSendMessage = async () => {
 
 // handle enter key
 const handleKeyDown = (event: KeyboardEvent) => {
+  // Toggle avatar with Tab key
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    store.toggleAvatar();
+    return;
+  }
+  
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     handleSendMessage();
@@ -157,7 +164,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
           :title="`Currently speaking as Avatar ${store.activeAvatar}. Click to switch.`"
         >
           <img
-            :src="store.activeAvatar === 'A' ? (activeConversation as any).avatarA : (activeConversation as any).avatarB"
+            :src="store.activeAvatar === 'A' ? activeConversation.avatarA : activeConversation.avatarB"
             :alt="`Avatar ${store.activeAvatar}`"
             class="w-full h-full object-cover"
           />
@@ -176,10 +183,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
         <div class="relative">
           <Textarea
             class="max-h-[5rem] pr-12.5 resize-none scrollbar-hidden"
-            @value-changed="(newValue: string) => (value = newValue)"
-            @input="handleSetDraft"
+            v-model="value"
             @keydown="handleKeyDown"
-            :value="value"
             auto-resize
             cols="30"
             rows="1"

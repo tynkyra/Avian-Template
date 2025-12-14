@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import type { Ref } from "vue";
+import { useRouter } from "vue-router";
 
 import useStore from "@src/store/store";
 
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>();
 
 const store = useStore();
+const router = useRouter();
 
 // Chat form data
 const chatTitle = ref("New Chat");
@@ -217,18 +219,27 @@ const openGroupPicturePicker = () => {
 // Handle title editing
 const startEditingTitle = () => {
   isEditingTitle.value = true;
+  // Focus the input after it renders
+  setTimeout(() => {
+    const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, 50);
 };
 
 const finishEditingTitle = () => {
+  isEditingTitle.value = false;
   if (chatTitle.value.trim() === "") {
     chatTitle.value = "New Chat";
   }
-  isEditingTitle.value = false;
 };
 
 const handleTitleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Enter") {
-    finishEditingTitle();
+    event.preventDefault();
+    (event.target as HTMLInputElement).blur();
   }
 };
 
@@ -279,14 +290,14 @@ const createNewChat = async () => {
     // Use store API to create conversation for consistency
     const created = await (store as any).createConversation('self_chat', [], finalTitle, displayPhoto, avatarA, avatarB);
 
-    // Reload conversations to reflect the new one
-    if (typeof (store as any).loadConversations === 'function') {
-      await (store as any).loadConversations();
-    }
-
     // Focus Messages panel to ensure user sees the list
     if ((store as any).activeSidebarComponent !== undefined) {
       (store as any).activeSidebarComponent = 'messages';
+    }
+
+    // Navigate to the newly created conversation
+    if (created && created.id) {
+      await router.push(`/chat/${created.id}/`);
     }
 
     // Reset form and close modal
@@ -404,7 +415,7 @@ const currentAvatarPreview = computed(() => {
                   :class="[
                     'w-20 h-20 rounded-full border-4 flex items-center justify-center overflow-hidden transition-all',
                     selectedAvatarType === 'A' ? 
-                      'border-blue-500 bg-blue-100 dark:bg-blue-900 shadow-lg scale-105' : 
+                      'border-blue-500 bg-blue-50 dark:bg-blue-900 shadow-lg scale-105 ring-2 ring-blue-300 dark:ring-blue-500' : 
                       'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 hover:border-gray-400'
                   ]"
                   :title="getAvatarName(selectedAvatarImages.A)"
@@ -424,7 +435,7 @@ const currentAvatarPreview = computed(() => {
                   :class="[
                     'w-20 h-20 rounded-full border-4 flex items-center justify-center overflow-hidden transition-all',
                     selectedAvatarType === 'B' ? 
-                      'border-green-500 bg-green-100 dark:bg-green-900 shadow-lg scale-105' : 
+                      'border-yellow-500 bg-yellow-50 dark:bg-yellow-900 shadow-lg scale-105 ring-2 ring-yellow-300 dark:ring-yellow-500' : 
                       'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 hover:border-gray-400'
                   ]"
                   :title="getAvatarName(selectedAvatarImages.B)"
@@ -459,9 +470,11 @@ const currentAvatarPreview = computed(() => {
                   <button
                     @click="selectAvatarFromGallery(avatar.id)"
                     :class="[
-                      'w-11 h-11 rounded-full border-2 overflow-hidden transition-all hover:scale-110',
+                      'w-11 h-11 rounded-full border-3 overflow-hidden transition-all hover:scale-110',
                       selectedAvatarImages[selectedAvatarType] === avatar.id ?
-                        'border-blue-500 shadow-md' :
+                        (selectedAvatarType === 'A' 
+                          ? 'border-blue-500 dark:border-blue-400 shadow-lg ring-2 ring-blue-300 dark:ring-blue-500'
+                          : 'border-yellow-500 dark:border-yellow-400 shadow-lg ring-2 ring-yellow-300 dark:ring-yellow-500') :
                         'border-gray-300 dark:border-gray-600 hover:border-gray-400'
                     ]"
                     :title="avatar.name"
