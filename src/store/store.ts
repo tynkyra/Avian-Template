@@ -168,6 +168,10 @@ const useStore = defineStore("chat", () => {
       const data = await apiService.getConversations();
       console.log('Store: Received active conversations:', data);
       console.log('Store: Avatar values:', data.map(c => ({ id: c.id, name: c.name, displayPhoto: (c as any).displayPhoto, avatarA: (c as any).avatarA, avatarB: (c as any).avatarB })));
+      
+      // Sort conversations: newest first (by ID, which auto-increments)
+      data.sort((a, b) => b.id - a.id);
+      
       conversations.value = data;
       status.value = "success";
     } catch (error) {
@@ -201,6 +205,13 @@ const useStore = defineStore("chat", () => {
       // Add message to local store
       if (conversation) {
         conversation.messages.push(message);
+        
+        // Move conversation to the top of the list
+        const index = conversations.value.indexOf(conversation);
+        if (index > 0) {
+          conversations.value.splice(index, 1);
+          conversations.value.unshift(conversation);
+        }
       }
 
       // Emit socket event for real-time updates

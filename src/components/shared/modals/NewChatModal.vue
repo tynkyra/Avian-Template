@@ -6,7 +6,6 @@ import { useRouter } from "vue-router";
 import useStore from "@src/store/store";
 
 import Button from "@src/components/ui/inputs/Button.vue";
-import TextInput from "@src/components/ui/inputs/TextInput.vue";
 import IconButton from "@src/components/ui/inputs/IconButton.vue";
 import Modal from "@src/components/ui/utils/Modal.vue";
 import { PhotoIcon, XMarkIcon, PencilIcon } from "@heroicons/vue/24/outline";
@@ -217,22 +216,31 @@ const openGroupPicturePicker = () => {
 };
 
 // Handle title editing
+const titleInputRef = ref<HTMLInputElement | null>(null);
+
 const startEditingTitle = () => {
   isEditingTitle.value = true;
-  // Focus the input after it renders
+  // Focus and select all text after it renders
   setTimeout(() => {
-    const input = document.querySelector('input[type="text"]') as HTMLInputElement;
-    if (input) {
-      input.focus();
-      input.select();
+    if (titleInputRef.value) {
+      titleInputRef.value.focus();
+      titleInputRef.value.select();
     }
-  }, 50);
+  }, 0);
 };
 
 const finishEditingTitle = () => {
+  // Trim the title first
+  const trimmedTitle = chatTitle.value.trim();
+  
+  // Always exit editing mode
   isEditingTitle.value = false;
-  if (chatTitle.value.trim() === "") {
+  
+  // Reset to default if empty
+  if (trimmedTitle === "") {
     chatTitle.value = "New Chat";
+  } else {
+    chatTitle.value = trimmedTitle;
   }
 };
 
@@ -370,13 +378,14 @@ const currentAvatarPreview = computed(() => {
             
             <!-- Editable title -->
             <div class="flex-1">
-              <TextInput
+              <input
                 v-if="isEditingTitle"
+                ref="titleInputRef"
                 v-model="chatTitle"
+                type="text"
                 @blur="finishEditingTitle"
                 @keydown="handleTitleKeydown"
-                class="heading-1 text-black/70 dark:text-white/70 bg-transparent border-none p-0 focus:ring-0"
-                ref="titleInput"
+                class="heading-1 text-black/70 dark:text-white/70 bg-transparent border-none p-0 focus:ring-0 w-full outline-none"
               />
               <h2
                 v-else
