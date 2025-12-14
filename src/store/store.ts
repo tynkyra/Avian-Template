@@ -122,10 +122,9 @@ const useStore = defineStore("chat", () => {
       // Connect socket
       socketService.connect(result.token);
       
-      // Load conversations
+      // Load conversations (this will set status to "success")
       await loadConversations();
       
-      status.value = "idle";
       return result;
     } catch (error) {
       status.value = "error";
@@ -168,9 +167,12 @@ const useStore = defineStore("chat", () => {
       console.log('Store: Loading active conversations...');
       const data = await apiService.getConversations();
       console.log('Store: Received active conversations:', data);
+      console.log('Store: Avatar values:', data.map(c => ({ id: c.id, name: c.name, displayPhoto: (c as any).displayPhoto, avatarA: (c as any).avatarA, avatarB: (c as any).avatarB })));
       conversations.value = data;
+      status.value = "success";
     } catch (error) {
       console.error('Failed to load conversations:', error);
+      status.value = "error";
     }
   };
 
@@ -219,12 +221,15 @@ const useStore = defineStore("chat", () => {
     }
   };
 
-  const createConversation = async (type: string, participantIds: number[], name?: string) => {
+  const createConversation = async (type: string, participantIds: number[], name?: string, displayPhoto?: string, avatarA?: string, avatarB?: string) => {
     try {
       const result = await apiService.createConversation({
         type,
         name,
-        participantIds
+        participantIds,
+        displayPhoto,
+        avatarA,
+        avatarB
       });
       
       // Reload conversations

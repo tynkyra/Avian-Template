@@ -60,7 +60,7 @@ onMounted(() => {
     class="grow px-5 py-5 flex flex-col overflow-y-scroll scrollbar-hidden"
   >
     <div
-      v-if="store.status !== 'loading'"
+      v-if="store.status !== 'loading' && activeConversation?.messages"
       v-for="(message, index) in activeConversation.messages"
       :key="index"
     >

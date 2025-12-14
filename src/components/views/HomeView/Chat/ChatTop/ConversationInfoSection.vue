@@ -78,7 +78,7 @@ const handleOpenVoiceCallModal = () => {
       </IconButton>
     </div>
 
-    <div v-if="store.status !== 'loading'" class="flex grow">
+    <div v-if="store.status !== 'loading' && activeConversation" class="flex grow">
       <!--avatar-->
       <button
         class="mr-5 outline-none"

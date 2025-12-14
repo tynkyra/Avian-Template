@@ -85,6 +85,7 @@ const handleCloseVoiceCallModal = (endCall: boolean) => {
 
     <!--Search modal-->
     <SearchModal
+      v-if="activeConversation"
       :open="openSearch"
       :close-modal="() => (openSearch = false)"
       :conversation="activeConversation"
@@ -92,6 +93,7 @@ const handleCloseVoiceCallModal = (endCall: boolean) => {
 
     <!--Contact info modal-->
     <ConversationInfoModal
+      v-if="activeConversation"
       :open="openInfo"
       :closeModal="() => (openInfo = false)"
       :conversation="activeConversation"

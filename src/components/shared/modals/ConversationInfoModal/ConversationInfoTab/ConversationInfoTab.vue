@@ -39,7 +39,7 @@ const imageUrl = computed(() => {
 </script>
 
 <template>
-  <div>
+  <div v-if="props.conversation">
     <div class="mb-6 px-5 flex justify-between items-center">
       <!--title-->
       <p

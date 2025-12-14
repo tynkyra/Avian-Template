@@ -49,7 +49,7 @@ export const initDatabase = () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL DEFAULT 'private',
       name TEXT,
-      avatar TEXT,
+      display_photo TEXT,
       created_by INTEGER NOT NULL,
       pinned_message_id INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -63,6 +63,33 @@ export const initDatabase = () => {
     ALTER TABLE conversations ADD COLUMN pinned_message_id INTEGER
   `, (err) => {
     // Ignore error if column already exists
+  });
+
+  // Add avatar_a and avatar_b columns for the two selectable avatars (migration)
+  db.run(`
+    ALTER TABLE conversations ADD COLUMN avatar_a TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  db.run(`
+    ALTER TABLE conversations ADD COLUMN avatar_b TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+  });
+
+  // Rename avatar to display_photo (migration)
+  db.run(`
+    ALTER TABLE conversations ADD COLUMN display_photo TEXT
+  `, (err) => {
+    if (!err) {
+      // Copy data from avatar to display_photo
+      db.run(`UPDATE conversations SET display_photo = avatar WHERE display_photo IS NULL`, (copyErr) => {
+        if (!copyErr) {
+          console.log('✅ Migrated avatar to display_photo');
+        }
+      });
+    }
   });
 
   // Conversation participants
@@ -94,6 +121,18 @@ export const initDatabase = () => {
           console.log('✅ Set all existing conversations to is_archived = 0');
         }
       });
+    }
+  });
+
+  // Update old avatar values ('A', 'B') to actual image URLs (migration)
+  db.run(`
+    UPDATE conversations 
+    SET display_photo = 'https://gundam-official.com/media/2_FREEDOM_414b8262a7/2_FREEDOM_414b8262a7.png'
+    WHERE (display_photo IN ('A', 'B') OR display_photo IS NULL OR display_photo LIKE '%wixmp%')
+    AND avatar_a IS NULL
+  `, (err) => {
+    if (!err) {
+      console.log('✅ Updated old display_photo values to default image');
     }
   });
 

@@ -49,8 +49,8 @@ const handleRemovePinnedMessage = async () => {
     <div
       class="absolute z-10 w-full px-5 py-2 bg-white dark:bg-gray-800 flex items-center justify-between transition-all duration-500"
       v-if="
-        activeConversation.pinnedMessage &&
-        !activeConversation.pinnedMessageHidden
+        activeConversation?.pinnedMessage &&
+        !activeConversation?.pinnedMessageHidden
       "
     >
       <!--pinned message preview-->

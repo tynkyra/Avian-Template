@@ -65,6 +65,7 @@ const handleClickOutside = (event: Event) => {
 
 // (event) set the draft message equals the content of the text area
 const handleSetDraft = () => {
+  if (!activeConversation) return;
   const index = getConversationIndex(activeConversation.id);
   if (index !== undefined) {
     store.conversations[index].draftMessage = value.value;
@@ -72,14 +73,25 @@ const handleSetDraft = () => {
 };
 
 onMounted(() => {
-  value.value = activeConversation.draftMessage;
+  value.value = activeConversation?.draftMessage || '';
 });
 
 // send message function
 const handleSendMessage = async () => {
-  if (!value.value.trim()) return;
+  console.log('handleSendMessage called', { value: value.value, activeConversation });
+  
+  if (!value.value.trim()) {
+    console.log('Message is empty, skipping');
+    return;
+  }
+  
+  if (!activeConversation) {
+    console.error('No active conversation');
+    return;
+  }
   
   try {
+    console.log('Sending message:', value.value.trim());
     await store.sendMessage(activeConversation.id, value.value.trim());
     value.value = '';
     // Clear draft message
@@ -135,18 +147,18 @@ const handleKeyDown = (event: KeyboardEvent) => {
       </div>
 
            <!-- Avatar Bubble -->
-      <div class="mr-3 mb-2">
+      <div class="mr-3 mb-2" v-if="activeConversation">
         <button
           @click="store.toggleAvatar()"
           class="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-offset-2 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4"
           :class="store.activeAvatar === 'A' 
             ? 'ring-blue-500 focus:ring-blue-300' 
             : 'ring-yellow-500 focus:ring-yellow-300'"
-          :title="`Currently speaking as ${store.activeAvatar === 'A' ? store.avatarA.firstName : store.avatarB.firstName} ${store.activeAvatar === 'A' ? store.avatarA.lastName : store.avatarB.lastName}. Click to switch.`"
+          :title="`Currently speaking as Avatar ${store.activeAvatar}. Click to switch.`"
         >
           <img
-            :src="store.activeAvatar === 'A' ? store.avatarA.avatar : store.avatarB.avatar"
-            :alt="`${store.activeAvatar === 'A' ? store.avatarA.firstName : store.avatarB.firstName} avatar`"
+            :src="store.activeAvatar === 'A' ? (activeConversation as any).avatarA : (activeConversation as any).avatarB"
+            :alt="`Avatar ${store.activeAvatar}`"
             class="w-full h-full object-cover"
           />
           <!-- Active indicator badge -->

@@ -102,6 +102,9 @@ class ApiService {
     type: string;
     name?: string;
     participantIds: number[];
+    displayPhoto?: string;
+    avatarA?: string;
+    avatarB?: string;
   }): Promise<{ id: number }> {
     return this.request<{ id: number }>('/conversations', {
       method: 'POST',

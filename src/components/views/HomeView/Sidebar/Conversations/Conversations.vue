@@ -39,14 +39,6 @@ const filteredConversations: Ref<IConversation[]> = ref([]);
 
 // filter the list of conversation based on search text.
 watch([keyword, openArchive, () => store.conversations, () => store.archivedConversations], () => {
-  console.log('=== Conversations.vue WATCH triggered ===');
-  console.log('openArchive:', openArchive.value);
-  console.log('keyword:', keyword.value);
-  console.log('store.conversations (active):', store.conversations);
-  console.log('store.archivedConversations:', store.archivedConversations);
-  console.log('store.status:', store.status);
-  console.log('store.delayLoading:', store.delayLoading);
-  
   if (openArchive.value) {
     // search archived conversations
     filteredConversations.value =
@@ -56,7 +48,6 @@ watch([keyword, openArchive, () => store.conversations, () => store.archivedConv
             ?.toLowerCase()
             .includes(keyword.value.toLowerCase()),
       ) || [];
-    console.log('Showing ARCHIVED conversations:', filteredConversations.value);
   } else {
     // search all active conversations
     filteredConversations.value =
@@ -66,34 +57,25 @@ watch([keyword, openArchive, () => store.conversations, () => store.archivedConv
             ?.toLowerCase()
             .includes(keyword.value.toLowerCase()),
       ) || [];
-    console.log('Showing ACTIVE conversations:', filteredConversations.value);
   }
 }, { immediate: true }); // Run immediately on component creation
 
 // if the active conversation is in the archive
 // then open the archive
 onMounted(async () => {
-  console.log('=== Conversations.vue onMounted ===');
-  
   // Load archived conversations from backend
   await store.loadArchivedConversations();
-  console.log('Archived conversations loaded:', store.archivedConversations);
   
   const activeConversationId = route.params.id ? Number(route.params.id) : undefined;
-  console.log('Active conversation ID from route:', activeConversationId);
   
   if (activeConversationId) {
     let conversation = store.archivedConversations.find(
       (conversation) => conversation.id === activeConversationId,
     );
-    console.log('Found in archive?', conversation);
     if (conversation) {
-      console.log('Opening archive view');
       openArchive.value = true;
     }
   }
-  
-  console.log('Final openArchive state:', openArchive.value);
 });
 </script>
 

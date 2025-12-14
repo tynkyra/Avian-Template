@@ -268,8 +268,16 @@ const createNewChat = async () => {
       finalTitle = `${finalTitle} ${counter}`;
     }
 
+    // Get the group picture (chat display photo) with default fallback
+    const displayPhoto = groupPicturePreview.value || 
+                        "https://gundam-official.com/media/2_FREEDOM_414b8262a7/2_FREEDOM_414b8262a7.png";
+    
+    // Get the two selected avatars
+    const avatarA = customAvatarPreview.value || getAvatarImage(selectedAvatarImages.value.A);
+    const avatarB = getAvatarImage(selectedAvatarImages.value.B);
+    
     // Use store API to create conversation for consistency
-    const created = await (store as any).createConversation('self_chat', [], finalTitle);
+    const created = await (store as any).createConversation('self_chat', [], finalTitle, displayPhoto, avatarA, avatarB);
 
     // Reload conversations to reflect the new one
     if (typeof (store as any).loadConversations === 'function') {

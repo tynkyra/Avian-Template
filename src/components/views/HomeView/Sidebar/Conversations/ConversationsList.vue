@@ -1,21 +1,11 @@
 <script setup lang="ts">
-import { onMounted, watch } from "vue";
+import { watch } from "vue";
 import type { IConversation } from "@src/types";
 import Conversation from "./Conversation.vue";
-import useStore from "@src/store/store";
 
 const props = defineProps<{
   conversations: IConversation[];
 }>();
-
-const store = useStore();
-
-onMounted(async () => {
-  // Load conversations from backend when component mounts
-  console.log('ConversationsList - onMounted: loading conversations...');
-  await store.loadConversations();
-  console.log('ConversationsList - Conversations loaded:', store.conversations.length);
-});
 
 // Watch props to see what's being passed
 watch(() => props.conversations, (newVal) => {

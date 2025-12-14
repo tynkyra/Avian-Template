@@ -46,8 +46,14 @@ export const getOddContact = (conversation: IConversation) => {
  * @returns A string representing the url to the avatar image
  */
 export const getAvatar = (conversation: IConversation) => {
+  if (!conversation) return '';
+  
+  if (conversation.type === 'self_chat') {
+    return (conversation as any)?.displayPhoto || '';
+  }
+  
   if (["group", "broadcast"].includes(conversation.type)) {
-    return conversation?.avatar;
+    return (conversation as any)?.displayPhoto;
   } else {
     let oddContact = getOddContact(conversation);
     return oddContact?.avatar;
@@ -60,6 +66,8 @@ export const getAvatar = (conversation: IConversation) => {
  * @returns String
  */
 export const getName = (conversation: IConversation , hyphen?: boolean) => {
+  if (!conversation) return '';
+  
   // For self chats, always show the conversation name
   if (conversation.type === 'self_chat') {
     if (hyphen) {

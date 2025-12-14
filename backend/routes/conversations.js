@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
   console.log('GET /conversations - userId:', userId, 'includeArchived:', includeArchived);
 
   db.all(`
-    SELECT DISTINCT c.id, c.type, c.name, c.avatar, c.created_at,
+    SELECT DISTINCT c.id, c.type, c.name, c.display_photo, c.avatar_a, c.avatar_b, c.created_at,
            COUNT(m.id) as message_count,
            MAX(m.created_at) as last_message_time,
            COALESCE(cp.is_archived, 0) as isArchived,
@@ -23,7 +23,7 @@ router.get('/', (req, res) => {
     JOIN conversation_participants cp ON c.id = cp.conversation_id
     LEFT JOIN messages m ON c.id = m.conversation_id
     WHERE cp.user_id = ? AND COALESCE(cp.is_archived, 0) = ?
-    GROUP BY c.id, c.type, c.name, c.avatar, c.created_at, cp.is_archived
+    GROUP BY c.id, c.type, c.name, c.display_photo, c.avatar_a, c.avatar_b, c.created_at, cp.is_archived
     ORDER BY last_message_time DESC
   `, [userId, userId, userId, includeArchived ? 1 : 0], (err, conversations) => {
     if (err) {
@@ -80,7 +80,9 @@ router.get('/', (req, res) => {
               id: conv.id,
               type: conv.type,
               name: conv.name,
-              avatar: conv.avatar,
+              displayPhoto: conv.display_photo,
+              avatarA: conv.avatar_a,
+              avatarB: conv.avatar_b,
               contacts: participants,
               messages: formattedMessages,
               unread: conv.unread_count,
@@ -99,8 +101,12 @@ router.get('/', (req, res) => {
 
 // Create a new conversation
 router.post('/', (req, res) => {
-  const { type, name, participantIds, title, avatarType } = req.body;
+  const { type, name, participantIds, title, displayPhoto, avatarA, avatarB } = req.body;
   const userId = req.user.userId;
+
+  console.log('Creating conversation - displayPhoto:', displayPhoto);
+  console.log('Creating conversation - avatarA:', avatarA);
+  console.log('Creating conversation - avatarB:', avatarB);
 
   // For self-chat conversations, we don't need participants
   if (type === 'self_chat') {
@@ -117,9 +123,11 @@ router.post('/', (req, res) => {
           return res.status(404).json({ error: 'User not found' });
         }
 
+        console.log('Saving conversation with displayPhoto:', displayPhoto || null);
+
         db.run(
-          'INSERT INTO conversations (type, name, created_by, avatar) VALUES (?, ?, ?, ?)',
-          [type, title || name, userId, avatarType || 'A'],
+          'INSERT INTO conversations (type, name, created_by, display_photo, avatar_a, avatar_b) VALUES (?, ?, ?, ?, ?, ?)',
+          [type, title || name, userId, displayPhoto || null, avatarA || null, avatarB || null],
           function(err) {
             if (err) {
               return res.status(500).json({ error: 'Failed to create conversation' });
@@ -141,7 +149,9 @@ router.post('/', (req, res) => {
                   id: conversationId,
                   type: type,
                   name: title || name,
-                  avatar: avatarType || 'A',
+                  displayPhoto: displayPhoto || null,
+                  avatarA: avatarA || null,
+                  avatarB: avatarB || null,
                   contacts: [{
                     id: userId,
                     firstName: userData.first_name,
