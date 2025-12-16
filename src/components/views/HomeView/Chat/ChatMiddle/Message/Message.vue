@@ -83,9 +83,11 @@ const hideAvatar = () => {
 // reply message
 const replyMessage = getMessageById(activeConversation, props.message.replyTo);
 
-// Format time as AM/PM
+// Format time as AM/PM in local timezone
 const formatTime = (dateString: string): string => {
   const date = new Date(dateString);
+  
+  // Get hours and minutes in local timezone
   let hours = date.getHours();
   const minutes = date.getMinutes();
   const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -144,9 +146,34 @@ const formatTime = (dateString: string): string => {
             class="mb-5 px-3"
           />
 
-          <!--content-->
+          <!--attachments-->
+          <Attachments
+            v-if="(props.message.attachments as [])?.length > 0"
+            :message="props.message"
+            :self="props.self"
+          />
+
+          <!--caption (content) for attachment messages-->
           <p
-            v-if="props.message.content && props.message.type !== 'recording'"
+            v-if="props.message.content && props.message.type !== 'recording' && props.message.attachments && props.message.attachments.length > 0"
+            class="body-2 outline-none text-black opacity-100 dark:text-white dark:opacity-70 mt-4"
+            v-html="
+              linkifyStr(props.message.content as string, {
+                className: props.self
+                  ? 'text-black opacity-50'
+                  : 'text-indigo-500 dark:text-indigo-300',
+                format: {
+                  url: (value) =>
+                    value.length > 50 ? value.slice(0, 50) + `…` : value,
+                },
+              })
+            "
+            tabindex="0"
+          ></p>
+
+          <!--content (for regular text messages without attachments)-->
+          <p
+            v-else-if="props.message.content && props.message.type !== 'recording'"
             class="body-2 outline-none text-black opacity-100 dark:text-white dark:opacity-70"
             v-html="
               linkifyStr(props.message.content as string, {
@@ -173,13 +200,6 @@ const formatTime = (dateString: string): string => {
               :self="props.self"
             />
           </div>
-
-          <!--attachments-->
-          <Attachments
-            v-if="(props.message.attachments as [])?.length > 0"
-            :message="props.message"
-            :self="props.self"
-          />
 
           <!--link preview-->
           <LinkPreview

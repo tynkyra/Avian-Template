@@ -161,14 +161,14 @@ const handleSendAttachments = async (attachments: File[], caption: string) => {
     return;
   }
   
-  console.log('Sending attachments:', attachments.length, 'Caption:', caption);
+  console.log('[ChatBottom] Received from modal - Attachments:', attachments.length, 'Caption:', caption, 'Caption length:', caption.length);
   
   try {
     // Send attachments using store method
     await store.sendAttachments(
       activeConversation.value.id,
       attachments,
-      caption || undefined
+      caption
     );
     
     console.log('✅ Attachments sent successfully');
@@ -185,6 +185,8 @@ const handleSendAttachments = async (attachments: File[], caption: string) => {
 
 // Open file picker directly
 const handleOpenFilePicker = () => {
+  // Clear previous files before opening picker
+  initialAttachmentFiles.value = [];
   attachmentFileInputRef.value?.click();
 };
 

@@ -31,6 +31,8 @@ router.post('/attachments', upload.array('files', 10), (req, res) => {
   const senderId = req.user.userId;
   const files = req.files;
 
+  console.log('[Attachments] Received:', { conversationId, caption, avatarUrl, filesCount: files?.length });
+
   if (!conversationId) {
     return res.status(400).json({ error: 'Conversation ID is required' });
   }
@@ -49,10 +51,12 @@ router.post('/attachments', upload.array('files', 10), (req, res) => {
       }
 
       // Create message with attachments
-      const content = caption || '';
+      const content = caption && caption.trim() ? caption.trim() : null;
+      const now = new Date().toISOString();
+      console.log('[Attachments] Saving content:', content);
       db.run(
-        'INSERT INTO messages (conversation_id, sender_id, type, content, avatar_url) VALUES (?, ?, ?, ?, ?)',
-        [conversationId, senderId, 'attachment', content, avatarUrl],
+        'INSERT INTO messages (conversation_id, sender_id, type, content, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [conversationId, senderId, 'attachment', content, avatarUrl, now],
         function(err) {
           if (err) {
             console.error('[Backend] Insert error:', err);
@@ -150,9 +154,10 @@ router.post('/', (req, res) => {
       }
 
       console.log('[Backend] Inserting message with avatar_url:', avatarUrl);
+      const now = new Date().toISOString();
       db.run(
-        'INSERT INTO messages (conversation_id, sender_id, type, content, reply_to, avatar_url) VALUES (?, ?, ?, ?, ?, ?)',
-        [conversationId, senderId, type || 'text', content, replyTo, avatarUrl],
+        'INSERT INTO messages (conversation_id, sender_id, type, content, reply_to, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [conversationId, senderId, type || 'text', content, replyTo, avatarUrl, now],
         function(err) {
           if (err) {
             console.error('[Backend] Insert error:', err);

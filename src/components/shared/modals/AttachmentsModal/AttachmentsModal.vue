@@ -50,6 +50,7 @@ const removeFile = (index: number) => {
 // Send attachments
 const handleSend = () => {
   if (selectedFiles.value.length > 0) {
+    console.log('[Modal] Sending with caption:', caption.value);
     emit('sendAttachments', selectedFiles.value, caption.value);
     handleClose();
   }
@@ -65,21 +66,24 @@ const handleClose = () => {
   props.closeModal();
 };
 
-// Watch for initial files changes
-watch(() => props.initialFiles, (files) => {
-  if (files && files.length > 0 && props.open) {
-    selectedFiles.value = [...files];
-  }
-}, { immediate: true });
-
-// Reset when modal closes
-watch(() => props.open, (isOpen) => {
-  if (!isOpen) {
+// Watch for modal open/close and handle state
+watch(() => props.open, (isOpen, wasOpen) => {
+  if (isOpen && !wasOpen) {
+    // Modal just opened - reset everything first
+    caption.value = "";
+    selectedFiles.value = [];
+    
+    // Then load initial files if provided
+    if (props.initialFiles && props.initialFiles.length > 0) {
+      selectedFiles.value = [...props.initialFiles];
+    }
+  } else if (!isOpen && wasOpen) {
+    // Modal just closed - clean up
     selectedFiles.value = [];
     caption.value = "";
-  } else if (props.initialFiles && props.initialFiles.length > 0) {
-    // Load initial files when modal opens
-    selectedFiles.value = [...props.initialFiles];
+    if (fileInputRef.value) {
+      fileInputRef.value.value = "";
+    }
   }
 });
 
@@ -144,7 +148,12 @@ watch(selectedFiles, (files) => {
 
         <!--Caption input-->
         <div class="px-5 py-6">
-          <LabeledTextInput v-model="caption" placeholder="Caption" type="text" />
+          <LabeledTextInput 
+            :value="caption" 
+            @value-changed="(value) => caption = value"
+            placeholder="Caption" 
+            type="text" 
+          />
         </div>
 
         <!--Action buttons-->

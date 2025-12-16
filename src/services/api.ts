@@ -175,18 +175,23 @@ class ApiService {
     caption?: string;
     avatarUrl?: string;
   }): Promise<IMessage> {
+    console.log('[API] Sending attachments:', {
+      filesCount: data.files.length,
+      totalSize: data.files.reduce((sum, f) => sum + f.size, 0),
+      caption: data.caption
+    });
+    
     const formData = new FormData();
     
     // Add files to FormData
     data.files.forEach((file) => {
       formData.append('files', file);
+      console.log('[API] File:', file.name, 'Size:', file.size, 'bytes');
     });
     
     // Add other data
     formData.append('conversationId', data.conversationId.toString());
-    if (data.caption) {
-      formData.append('caption', data.caption);
-    }
+    formData.append('caption', data.caption || '');
     if (data.avatarUrl) {
       formData.append('avatarUrl', data.avatarUrl);
     }
@@ -200,23 +205,33 @@ class ApiService {
       body: formData,
     };
 
-    const response = await fetch(`${API_BASE_URL}/messages/attachments`, config);
+    console.log('[API] Sending to:', `${API_BASE_URL}/messages/attachments`);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/messages/attachments`, config);
 
-    if (!response.ok) {
-      let errorBody: any = null;
-      try {
-        errorBody = await response.json();
-      } catch (e) {
-        // ignore JSON parse error
+      console.log('[API] Response status:', response.status);
+
+      if (!response.ok) {
+        let errorBody: any = null;
+        try {
+          errorBody = await response.json();
+        } catch (e) {
+          // ignore JSON parse error
+        }
+        const message = errorBody?.error || errorBody?.message || `Request failed (${response.status})`;
+        console.error('[API] Error response:', errorBody);
+        const err = new Error(message);
+        (err as any).status = response.status;
+        (err as any).body = errorBody;
+        throw err;
       }
-      const message = errorBody?.error || errorBody?.message || `Request failed (${response.status})`;
-      const err = new Error(message);
-      (err as any).status = response.status;
-      (err as any).body = errorBody;
-      throw err;
-    }
 
-    return response.json();
+      return response.json();
+    } catch (error) {
+      console.error('[API] Network error:', error);
+      throw error;
+    }
   }
 
   async markMessageAsRead(messageId: number): Promise<void> {
