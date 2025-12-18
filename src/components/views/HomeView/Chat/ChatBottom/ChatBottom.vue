@@ -38,6 +38,12 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 // determines whether the app is recording or not.
 const recording = ref(false);
 
+// Audio recording state
+const mediaRecorder: Ref<MediaRecorder | null> = ref(null);
+const audioChunks: Ref<Blob[]> = ref([]);
+const recordingDuration = ref(0);
+const recordingTimer: Ref<number | null> = ref(null);
+
 // open emoji picker.
 const showPicker = ref(false);
 
@@ -50,13 +56,100 @@ const attachmentFileInputRef: Ref<HTMLInputElement | null> = ref(null);
 // Initial files to pass to modal
 const initialAttachmentFiles: Ref<File[]> = ref([]);
 
-// start and stop recording.
-const handleToggleRecording = () => {
-  recording.value = !recording.value;
+// Format duration as MM:SS
+const formatDuration = (seconds: number) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-// stop recording without sending.
+// Start/stop recording
+const handleToggleRecording = async () => {
+  if (!recording.value) {
+    // Start recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      audioChunks.value = [];
+      recordingDuration.value = 0;
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.value.push(event.data);
+        }
+      };
+      
+      recorder.onstop = async () => {
+        // Stop all audio tracks
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Create audio blob and send
+        if (audioChunks.value.length > 0 && activeConversation.value) {
+          const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
+          const audioFile = new File([audioBlob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
+          
+          try {
+            // Send recording as attachment
+            await store.sendRecording(
+              activeConversation.value.id,
+              audioFile,
+              formatDuration(recordingDuration.value)
+            );
+          } catch (error) {
+            console.error('Failed to send recording:', error);
+            alert('Failed to send recording. Please try again.');
+          }
+        }
+        
+        // Clear timer
+        if (recordingTimer.value) {
+          clearInterval(recordingTimer.value);
+          recordingTimer.value = null;
+        }
+      };
+      
+      recorder.start();
+      mediaRecorder.value = recorder;
+      recording.value = true;
+      
+      // Start duration timer
+      recordingTimer.value = window.setInterval(() => {
+        recordingDuration.value++;
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      alert('Failed to access microphone. Please check your permissions.');
+    }
+  } else {
+    // Stop recording and send
+    if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+      mediaRecorder.value.stop();
+      recording.value = false;
+    }
+  }
+};
+
+// Cancel recording without sending
 const handleCancelRecording = () => {
+  if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+    // Stop the recorder
+    mediaRecorder.value.stop();
+    
+    // Stop all audio tracks
+    mediaRecorder.value.stream.getTracks().forEach(track => track.stop());
+  }
+  
+  // Clear timer
+  if (recordingTimer.value) {
+    clearInterval(recordingTimer.value);
+    recordingTimer.value = null;
+  }
+  
+  // Clear audio chunks so nothing gets sent
+  audioChunks.value = [];
+  recordingDuration.value = 0;
   recording.value = false;
 };
 
@@ -240,7 +333,7 @@ const handleCloseAttachmentsModal = () => {
         </IconButton>
 
         <!--recording timer-->
-        <p v-if="recording" class="body-1 text-indigo-300">00:11</p>
+        <p v-if="recording" class="body-1 text-indigo-300">{{ formatDuration(recordingDuration) }}</p>
       </div>
 
            <!-- Avatar Bubble -->

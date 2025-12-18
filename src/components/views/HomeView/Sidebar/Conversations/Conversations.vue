@@ -60,6 +60,13 @@ watch([keyword, openArchive, () => store.conversations, () => store.archivedConv
   }
 }, { immediate: true }); // Run immediately on component creation
 
+// Watch archived conversations and close archive when it becomes empty
+watch(() => store.archivedConversations.length, (newLength) => {
+  if (openArchive.value && newLength === 0) {
+    openArchive.value = false;
+  }
+});
+
 // if the active conversation is in the archive
 // then open the archive
 onMounted(async () => {
@@ -139,6 +146,7 @@ onMounted(async () => {
             <component
               :is="ConversationsList"
               :conversations="filteredConversations"
+              :is-archived="openArchive"
               :key="openArchive ? 'archive' : 'active'"
             />
           </FadeTransition>

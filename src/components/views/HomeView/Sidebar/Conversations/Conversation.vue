@@ -23,15 +23,20 @@ import {
 } from "@heroicons/vue/24/outline";
 import Dropdown from "@src/components/ui/navigation/Dropdown/Dropdown.vue";
 import DropdownLink from "@src/components/ui/navigation/Dropdown/DropdownLink.vue";
+import ConversationInfoModal from "@src/components/shared/modals/ConversationInfoModal/ConversationInfoModal.vue";
+import ConfirmModal from "@src/components/ui/utils/ConfirmModal.vue";
 
 const props = defineProps<{
   conversation: IConversation;
+  isArchived?: boolean;
 }>();
 
 const store = useStore();
 const route = useRoute();
 
 const showContextMenu = ref(false);
+const showConversationInfo = ref(false);
+const showDeleteConfirm = ref(false);
 
 const contextMenuCoordinations: Ref<{ x: number; y: number } | undefined> =
   ref();
@@ -71,12 +76,31 @@ const handleArchiveConversation = async () => {
   }
 };
 
-// (event) delete conversation
-const handleDeleteConversation = async () => {
+// (event) unarchive conversation
+const handleUnarchiveConversation = async () => {
   handleCloseContextMenu();
-  if (!confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
-    return;
+  try {
+    await store.archiveConversation(props.conversation.id, false);
+  } catch (error) {
+    console.error('Failed to unarchive conversation:', error);
   }
+};
+
+// (event) open conversation info modal
+const handleOpenConversationInfo = () => {
+  handleCloseContextMenu();
+  showConversationInfo.value = true;
+};
+
+// (event) show delete confirmation modal
+const handleShowDeleteConfirm = () => {
+  handleCloseContextMenu();
+  showDeleteConfirm.value = true;
+};
+
+// (event) delete conversation after confirmation
+const handleConfirmDelete = async () => {
+  showDeleteConfirm.value = false;
   try {
     await store.deleteConversation(props.conversation.id);
     // Redirect to messages if this was the active conversation
@@ -87,6 +111,11 @@ const handleDeleteConversation = async () => {
   } catch (error) {
     console.error('Failed to delete conversation:', error);
   }
+};
+
+// (event) cancel delete
+const handleCancelDelete = () => {
+  showDeleteConfirm.value = false;
 };
 
 // (event) select this conversation.
@@ -297,15 +326,27 @@ const formatConversationDate = (dateString: string | undefined): string => {
         class="dropdown-link dropdown-link-primary"
         aria-label="Show conversation information"
         role="menuitem"
-        @click="handleCloseContextMenu"
+        @click="handleOpenConversationInfo"
       >
         <InformationCircleIcon class="h-5 w-5 mr-3" />
         Conversation info
       </button>
 
       <button
+        v-if="props.isArchived"
         class="dropdown-link dropdown-link-primary"
-        aria-label="Add conversation to archive"
+        aria-label="Unarchive conversation"
+        role="menuitem"
+        @click="handleUnarchiveConversation"
+      >
+        <ArchiveBoxArrowDownIcon class="h-5 w-5 mr-3" />
+        Unarchive conversation
+      </button>
+
+      <button
+        v-else
+        class="dropdown-link dropdown-link-primary"
+        aria-label="Archive conversation"
         role="menuitem"
         @click="handleArchiveConversation"
       >
@@ -317,11 +358,31 @@ const formatConversationDate = (dateString: string | undefined): string => {
         class="dropdown-link dropdown-link-danger"
         aria-label="Delete the conversation"
         role="menuitem"
-        @click="handleDeleteConversation"
+        @click="handleShowDeleteConfirm"
       >
         <TrashIcon class="h-5 w-5 mr-3" />
         Delete conversation
       </button>
     </Dropdown>
+
+    <!--Conversation Info Modal-->
+    <ConversationInfoModal
+      v-if="showConversationInfo"
+      :open="showConversationInfo"
+      :closeModal="() => showConversationInfo = false"
+      :conversation="props.conversation"
+    />
+
+    <!--Delete Confirmation Modal-->
+    <ConfirmModal
+      :open="showDeleteConfirm"
+      title="Delete Conversation"
+      message="Are you sure you want to delete this conversation? This action cannot be undone and all messages will be permanently deleted."
+      confirmText="Delete"
+      cancelText="Cancel"
+      confirmVariant="danger"
+      @confirm="handleConfirmDelete"
+      @cancel="handleCancelDelete"
+    />
   </div>
 </template>

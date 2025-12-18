@@ -5,6 +5,7 @@ import Conversation from "./Conversation.vue";
 
 const props = defineProps<{
   conversations: IConversation[];
+  isArchived?: boolean;
 }>();
 
 // Watch props to see what's being passed
@@ -22,6 +23,7 @@ watch(() => props.conversations, (newVal) => {
     <Conversation
       v-for="conversation in props.conversations"
       :conversation="conversation"
+      :is-archived="props.isArchived"
       :key="conversation.id"
       role="listitem"
     />

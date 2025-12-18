@@ -269,6 +269,49 @@ const useStore = defineStore("chat", () => {
     }
   };
 
+  const sendRecording = async (conversationId: number, audioFile: File, duration: string) => {
+    try {
+      // Get the conversation to access its avatars
+      const conversation = conversations.value.find(c => c.id === conversationId);
+      
+      // Get the avatar URL based on which avatar is active
+      const avatarUrl = activeAvatar.value === 'A' 
+        ? (conversation as any)?.avatarA 
+        : (conversation as any)?.avatarB;
+      
+      console.log('[Store] Sending recording with avatarUrl:', avatarUrl, 'duration:', duration);
+      
+      const message = await apiService.sendRecording({
+        conversationId,
+        audioFile,
+        duration,
+        avatarUrl
+      });
+
+      // Add message to local store
+      if (conversation) {
+        conversation.messages.push(message);
+        
+        // Move conversation to the top of the list
+        const index = conversations.value.indexOf(conversation);
+        if (index > 0) {
+          const updated = [...conversations.value];
+          updated.splice(index, 1);
+          updated.unshift(conversation);
+          conversations.value = updated;
+        }
+      }
+
+      // Emit socket event for real-time updates
+      socketService.sendMessage({ ...message, conversationId });
+
+      return message;
+    } catch (error) {
+      console.error('Failed to send recording:', error);
+      throw error;
+    }
+  };
+
   const addContact = async (contactId: number) => {
     try {
       await apiService.addContact(contactId);
@@ -407,14 +450,30 @@ const useStore = defineStore("chat", () => {
       } else if (conversation && !archived) {
         // Move back to active (shouldn't happen often but handle it)
         archivedConversations.value = archivedConversations.value.filter(c => c.id !== conversationId);
-        conversations.value.push(conversation);
+        conversations.value.unshift(conversation); // Add to beginning
+        // Sort by last message time
+        conversations.value.sort((a, b) => {
+          const aLastMsg = a.messages[a.messages.length - 1];
+          const bLastMsg = b.messages[b.messages.length - 1];
+          if (!aLastMsg) return 1;
+          if (!bLastMsg) return -1;
+          return new Date(bLastMsg.date).getTime() - new Date(aLastMsg.date).getTime();
+        });
       }
       
       // Also check archived list
       const archivedConv = archivedConversations.value.find(c => c.id === conversationId);
       if (archivedConv && !archived) {
         archivedConversations.value = archivedConversations.value.filter(c => c.id !== conversationId);
-        conversations.value.push(archivedConv);
+        conversations.value.unshift(archivedConv); // Add to beginning
+        // Sort by last message time
+        conversations.value.sort((a, b) => {
+          const aLastMsg = a.messages[a.messages.length - 1];
+          const bLastMsg = b.messages[b.messages.length - 1];
+          if (!aLastMsg) return 1;
+          if (!bLastMsg) return -1;
+          return new Date(bLastMsg.date).getTime() - new Date(aLastMsg.date).getTime();
+        });
       }
       
     } catch (error) {
@@ -584,6 +643,7 @@ const useStore = defineStore("chat", () => {
     loadArchivedConversations,
     sendMessage,
     sendAttachments,
+    sendRecording,
     addContact,
     createConversation,
     updateConversation,

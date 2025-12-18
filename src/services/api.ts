@@ -240,6 +240,68 @@ class ApiService {
     }
   }
 
+  async sendRecording(data: {
+    conversationId: number;
+    audioFile: File;
+    duration: string;
+    avatarUrl?: string;
+  }): Promise<IMessage> {
+    console.log('[API] Sending recording:', {
+      fileName: data.audioFile.name,
+      fileSize: data.audioFile.size,
+      duration: data.duration
+    });
+    
+    const formData = new FormData();
+    
+    // Add audio file to FormData
+    formData.append('recording', data.audioFile);
+    
+    // Add other data
+    formData.append('conversationId', data.conversationId.toString());
+    formData.append('duration', data.duration);
+    if (data.avatarUrl) {
+      formData.append('avatarUrl', data.avatarUrl);
+    }
+    
+    // Use fetch directly for FormData (don't set Content-Type header)
+    const config: RequestInit = {
+      method: 'POST',
+      headers: {
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      },
+      body: formData,
+    };
+
+    console.log('[API] Sending to:', `${API_BASE_URL}/messages/recording`);
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/messages/recording`, config);
+
+      console.log('[API] Response status:', response.status);
+
+      if (!response.ok) {
+        let errorBody: any = null;
+        try {
+          errorBody = await response.json();
+        } catch (e) {
+          // ignore JSON parse error
+        }
+        const message = errorBody?.error || errorBody?.message || `Request failed (${response.status})`;
+        console.error('[API] Error response:', errorBody);
+        const err = new Error(message);
+        (err as any).status = response.status;
+        (err as any).body = errorBody;
+        throw err;
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('[API] Network error:', error);
+      throw error;
+    }
+  }
+
   async markMessageAsRead(messageId: number): Promise<void> {
     await this.request(`/messages/${messageId}/read`, {
       method: 'POST',

@@ -132,6 +132,97 @@ router.post('/attachments', upload.array('files', 10), (req, res) => {
   );
 });
 
+// Send recording
+router.post('/recording', upload.single('recording'), (req, res) => {
+  const { conversationId, duration, avatarUrl } = req.body;
+  const senderId = req.user.userId;
+  const file = req.file;
+
+  console.log('[Recording] Received:', { conversationId, duration, avatarUrl, file: file?.filename });
+
+  if (!conversationId) {
+    return res.status(400).json({ error: 'Conversation ID is required' });
+  }
+
+  if (!file) {
+    return res.status(400).json({ error: 'Recording file is required' });
+  }
+
+  if (!duration) {
+    return res.status(400).json({ error: 'Duration is required' });
+  }
+
+  // Verify user is participant in conversation
+  db.get(
+    'SELECT id FROM conversation_participants WHERE conversation_id = ? AND user_id = ?',
+    [conversationId, senderId],
+    (err, participant) => {
+      if (err || !participant) {
+        return res.status(403).json({ error: 'Not authorized to send message to this conversation' });
+      }
+
+      // Create recording object
+      const fileUrl = `http://127.0.0.1:3003/uploads/attachments/${file.filename}`;
+      const fileSizeKB = (file.size / 1024).toFixed(2);
+      const recording = {
+        id: Date.now(), // Temporary ID for recording object
+        size: fileSizeKB + ' KB',
+        src: fileUrl,
+        duration: duration
+      };
+
+      const now = new Date().toISOString();
+      
+      // Create message with recording content
+      db.run(
+        'INSERT INTO messages (conversation_id, sender_id, type, content, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [conversationId, senderId, 'recording', JSON.stringify(recording), avatarUrl, now],
+        function(err) {
+          if (err) {
+            console.error('[Backend] Insert error:', err);
+            return res.status(500).json({ error: 'Failed to send recording' });
+          }
+
+          const messageId = this.lastID;
+
+          // Get the created message with sender info
+          db.get(`
+            SELECT m.id, m.type, m.content, m.reply_to as replyTo, m.state, m.avatar_url as avatarUrl, m.created_at as date,
+                   u.id as sender_id, u.first_name as sender_firstName, u.last_name as sender_lastName,
+                   u.email as sender_email, u.avatar as sender_avatar, u.last_seen as sender_lastSeen
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.id = ?
+          `, [messageId], (err, message) => {
+            if (err) {
+              return res.status(500).json({ error: 'Recording sent but failed to retrieve' });
+            }
+
+            const formattedMessage = {
+              id: message.id,
+              type: message.type,
+              content: JSON.parse(message.content),
+              date: message.date,
+              replyTo: message.replyTo,
+              state: message.state,
+              sender: {
+                id: message.sender_id,
+                firstName: message.sender_firstName,
+                lastName: message.sender_lastName,
+                email: message.sender_email,
+                avatar: message.avatarUrl || message.sender_avatar,
+                lastSeen: message.sender_lastSeen
+              }
+            };
+
+            res.status(201).json(formattedMessage);
+          });
+        }
+      );
+    }
+  );
+});
+
 // Send a message
 router.post('/', (req, res) => {
   const { conversationId, content, type, replyTo, avatarUrl } = req.body;
