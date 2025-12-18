@@ -115,6 +115,44 @@ const isActive = computed(
     return activeId === props.conversation.id;
   },
 );
+
+// Format date for conversation list (Singapore time UTC+8)
+const formatConversationDate = (dateString: string | undefined): string => {
+  if (!dateString) return '';
+  
+  const messageDate = new Date(dateString);
+  const now = new Date();
+  
+  // Convert to Singapore time (UTC+8)
+  const sgOffset = 8 * 60; // Singapore is UTC+8
+  const localOffset = now.getTimezoneOffset(); // Local offset in minutes (negative for east of UTC)
+  const offsetDiff = sgOffset + localOffset;
+  
+  const sgDate = new Date(messageDate.getTime() + offsetDiff * 60 * 1000);
+  const sgNow = new Date(now.getTime() + offsetDiff * 60 * 1000);
+  
+  // Check if message is from today
+  const isToday = sgDate.getDate() === sgNow.getDate() &&
+                  sgDate.getMonth() === sgNow.getMonth() &&
+                  sgDate.getFullYear() === sgNow.getFullYear();
+  
+  if (isToday) {
+    // Show time only in 12-hour format with AM/PM
+    let hours = sgDate.getHours();
+    const minutes = sgDate.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return `${hours}:${minutesStr} ${ampm}`;
+  } else {
+    // Show date only (DD/MM/YYYY)
+    const day = sgDate.getDate();
+    const month = sgDate.getMonth() + 1;
+    const year = sgDate.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+};
 </script>
 
 <template>
@@ -164,7 +202,7 @@ const isActive = computed(
 
             <!--last message date-->
             <p class="body-1 text-black/70 dark:text-white/70">
-              {{ lastMessage?.date }}
+              {{ formatConversationDate(lastMessage?.date) }}
             </p>
           </div>
         </div>

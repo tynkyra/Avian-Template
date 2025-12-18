@@ -76,8 +76,8 @@ const handleCloseVoiceCallModal = (endCall: boolean) => {
       class="relative transition-[padding] duration-200"
       :class="{
         'pb-15':
-          activeConversation?.pinnedMessage &&
-          !activeConversation?.pinnedMessageHidden,
+          activeConversation?.pinnedMessages && 
+          activeConversation.pinnedMessages.length > 0,
       }"
     >
       <PinnedMessage :active-conversation="activeConversation" />

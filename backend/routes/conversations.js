@@ -76,17 +76,50 @@ router.get('/', (req, res) => {
               }
             })).reverse();
 
-            resolve({
-              id: conv.id,
-              type: conv.type,
-              name: conv.name,
-              displayPhoto: conv.display_photo,
-              avatarA: conv.avatar_a,
-              avatarB: conv.avatar_b,
-              contacts: participants,
-              messages: formattedMessages,
-              unread: conv.unread_count,
-              draftMessage: ''
+            // Get pinned messages
+            db.all(`
+              SELECT m.id, m.type, m.content, m.reply_to as replyTo, m.state, m.avatar_url as avatarUrl, m.created_at as date,
+                     u.id as sender_id, u.first_name as sender_firstName, u.last_name as sender_lastName,
+                     u.email as sender_email, u.avatar as sender_avatar, u.last_seen as sender_lastSeen,
+                     pm.pinned_at as pinnedAt
+              FROM pinned_messages pm
+              JOIN messages m ON pm.message_id = m.id
+              JOIN users u ON m.sender_id = u.id
+              WHERE pm.conversation_id = ?
+              ORDER BY m.created_at DESC
+            `, [conv.id], (err, pinnedMessages) => {
+              if (err) pinnedMessages = [];
+
+              const formattedPinnedMessages = pinnedMessages.map(msg => ({
+                id: msg.id,
+                type: msg.type,
+                content: msg.content,
+                date: msg.date,
+                replyTo: msg.replyTo,
+                state: msg.state,
+                sender: {
+                  id: msg.sender_id,
+                  firstName: msg.sender_firstName,
+                  lastName: msg.sender_lastName,
+                  email: msg.sender_email,
+                  avatar: msg.avatarUrl || msg.sender_avatar,
+                  lastSeen: msg.sender_lastSeen
+                }
+              }));
+
+              resolve({
+                id: conv.id,
+                type: conv.type,
+                name: conv.name,
+                displayPhoto: conv.display_photo,
+                avatarA: conv.avatar_a,
+                avatarB: conv.avatar_b,
+                contacts: participants,
+                messages: formattedMessages,
+                pinnedMessages: formattedPinnedMessages,
+                unread: conv.unread_count,
+                draftMessage: ''
+              });
             });
           });
         });
@@ -455,6 +488,76 @@ router.patch('/:conversationId/pin', (req, res) => {
   const userId = req.user.userId;
   const { messageId } = req.body;
 
+  console.log('[Pin] Request - conversationId:', conversationId, 'userId:', userId, 'messageId:', messageId);
+
+  // Verify user is participant in conversation
+  db.get(
+    'SELECT id, user_id, conversation_id FROM conversation_participants WHERE conversation_id = ? AND user_id = ?',
+    [conversationId, userId],
+    (err, participant) => {
+      if (err) {
+        console.error('[Pin] Database error checking participant:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      if (!participant) {
+        console.log('[Pin] User not found as participant in conversation');
+        return res.status(403).json({ error: 'Not authorized to modify this conversation' });
+      }
+      console.log('[Pin] User verified as participant:', participant);
+
+      if (messageId) {
+        // Pin a new message
+        db.get(
+          'SELECT id FROM messages WHERE id = ? AND conversation_id = ?',
+          [messageId, conversationId],
+          (err, message) => {
+            if (err || !message) {
+              return res.status(404).json({ error: 'Message not found in this conversation' });
+            }
+
+            // Insert into pinned_messages table (or ignore if already pinned)
+            const now = new Date().toISOString();
+            db.run(
+              'INSERT OR IGNORE INTO pinned_messages (conversation_id, message_id, pinned_at) VALUES (?, ?, ?)',
+              [conversationId, messageId, now],
+              (err) => {
+                if (err) {
+                  console.error('[Pin] Error pinning message:', err);
+                  return res.status(500).json({ error: 'Failed to pin message' });
+                }
+                console.log('[Pin] Message pinned successfully');
+                res.json({ success: true, messageId });
+              }
+            );
+          }
+        );
+      } else {
+        // Unpin all messages for this conversation
+        db.run(
+          'DELETE FROM pinned_messages WHERE conversation_id = ?',
+          [conversationId],
+          (err) => {
+            if (err) {
+              console.error('[Pin] Error unpinning messages:', err);
+              return res.status(500).json({ error: 'Failed to unpin messages' });
+            }
+            console.log('[Pin] All messages unpinned');
+            res.json({ success: true });
+          }
+        );
+      }
+    }
+  );
+});
+
+// Unpin a specific message
+router.delete('/:conversationId/pin/:messageId', (req, res) => {
+  const conversationId = req.params.conversationId;
+  const messageId = req.params.messageId;
+  const userId = req.user.userId;
+
+  console.log('[Unpin] Request - conversationId:', conversationId, 'messageId:', messageId, 'userId:', userId);
+
   // Verify user is participant in conversation
   db.get(
     'SELECT id FROM conversation_participants WHERE conversation_id = ? AND user_id = ?',
@@ -464,41 +567,18 @@ router.patch('/:conversationId/pin', (req, res) => {
         return res.status(403).json({ error: 'Not authorized to modify this conversation' });
       }
 
-      // Verify message exists in conversation
-      if (messageId) {
-        db.get(
-          'SELECT id FROM messages WHERE id = ? AND conversation_id = ?',
-          [messageId, conversationId],
-          (err, message) => {
-            if (err || !message) {
-              return res.status(404).json({ error: 'Message not found in this conversation' });
-            }
-
-            db.run(
-              'UPDATE conversations SET pinned_message_id = ? WHERE id = ?',
-              [messageId, conversationId],
-              (err) => {
-                if (err) {
-                  return res.status(500).json({ error: 'Failed to pin message' });
-                }
-                res.json({ success: true, pinnedMessageId: messageId });
-              }
-            );
+      db.run(
+        'DELETE FROM pinned_messages WHERE conversation_id = ? AND message_id = ?',
+        [conversationId, messageId],
+        (err) => {
+          if (err) {
+            console.error('[Unpin] Error unpinning message:', err);
+            return res.status(500).json({ error: 'Failed to unpin message' });
           }
-        );
-      } else {
-        // Unpin message (set to null)
-        db.run(
-          'UPDATE conversations SET pinned_message_id = NULL WHERE id = ?',
-          [conversationId],
-          (err) => {
-            if (err) {
-              return res.status(500).json({ error: 'Failed to unpin message' });
-            }
-            res.json({ success: true, pinnedMessageId: null });
-          }
-        );
-      }
+          console.log('[Unpin] Message unpinned successfully');
+          res.json({ success: true });
+        }
+      );
     }
   );
 });

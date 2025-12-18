@@ -169,10 +169,19 @@ const saveChanges = async () => {
     
     console.log('Conversation updated successfully');
     
-    // Reload messages to get updated avatar URLs
-    const updatedMessages = await apiService.getMessages(props.conversation.id);
+    // Reload messages to get updated avatar URLs and pinned messages
+    const response = await apiService.getMessages(props.conversation.id);
     if (props.conversation.messages) {
-      props.conversation.messages = updatedMessages;
+      props.conversation.messages = response.messages;
+      
+      // Populate pinned messages
+      if (response.pinnedMessageIds && response.pinnedMessageIds.length > 0) {
+        props.conversation.pinnedMessages = response.messages
+          .filter(m => response.pinnedMessageIds.includes(m.id))
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } else {
+        props.conversation.pinnedMessages = [];
+      }
     }
     
     console.log('Messages reloaded with updated avatars');

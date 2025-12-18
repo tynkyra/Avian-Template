@@ -300,7 +300,23 @@ router.get('/:conversationId', (req, res) => {
                 }
               })).reverse();
 
-              res.json(formattedMessages);
+              // Get pinned messages for this conversation
+              db.all(`
+                SELECT pm.message_id
+                FROM pinned_messages pm
+                WHERE pm.conversation_id = ?
+              `, [conversationId], (pinErr, pinnedRefs) => {
+                if (pinErr) {
+                  console.error('[Backend GET] Error fetching pinned message refs:', pinErr);
+                }
+                
+                const pinnedMessageIds = pinnedRefs ? pinnedRefs.map(p => p.message_id) : [];
+                
+                res.json({
+                  messages: formattedMessages,
+                  pinnedMessageIds: pinnedMessageIds
+                });
+              });
             });
           });
         }

@@ -148,9 +148,15 @@ class ApiService {
     });
   }
 
+  async unpinMessage(conversationId: number, messageId: number): Promise<void> {
+    await this.request(`/conversations/${conversationId}/pin/${messageId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Message methods
-  async getMessages(conversationId: number, limit = 50, offset = 0): Promise<IMessage[]> {
-    return this.request<IMessage[]>(`/messages/${conversationId}?limit=${limit}&offset=${offset}`);
+  async getMessages(conversationId: number, limit = 50, offset = 0): Promise<{ messages: IMessage[], pinnedMessageIds: number[] }> {
+    return this.request<{ messages: IMessage[], pinnedMessageIds: number[] }>(`/messages/${conversationId}?limit=${limit}&offset=${offset}`);
   }
 
   async sendMessage(data: {

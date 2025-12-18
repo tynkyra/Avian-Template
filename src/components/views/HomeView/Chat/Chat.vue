@@ -69,9 +69,20 @@ watch(() => route.params.id, async (newId) => {
       // Always load messages to ensure we have the latest data
       try {
         console.log('[Chat.vue] Loading messages for conversation:', conversationId);
-        const messages = await apiService.getMessages(conversationId);
-        console.log('[Chat.vue] Loaded messages:', messages.length, messages);
-        conversation.messages = messages;
+        const response = await apiService.getMessages(conversationId);
+        console.log('[Chat.vue] Loaded messages:', response.messages.length, 'pinnedIds:', response.pinnedMessageIds);
+        conversation.messages = response.messages;
+        
+        // Populate pinned messages from pinnedMessageIds
+        if (response.pinnedMessageIds && response.pinnedMessageIds.length > 0) {
+          conversation.pinnedMessages = response.messages
+            .filter(m => response.pinnedMessageIds.includes(m.id))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        } else {
+          conversation.pinnedMessages = [];
+        }
+        
+        console.log('[Chat.vue] Pinned messages:', conversation.pinnedMessages?.length || 0);
         console.log('[Chat.vue] After assignment, conversation.messages:', conversation.messages?.length);
       } catch (error) {
         console.error('[Chat.vue] Failed to load messages:', error);

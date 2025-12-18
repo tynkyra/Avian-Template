@@ -299,10 +299,19 @@ const useStore = defineStore("chat", () => {
       
       // Load messages for the new conversation
       if (result.id) {
-        const messages = await apiService.getMessages(result.id);
+        const response = await apiService.getMessages(result.id);
         const conversation = conversations.value.find(c => c.id === result.id);
         if (conversation) {
-          conversation.messages = messages;
+          conversation.messages = response.messages;
+          
+          // Populate pinned messages from pinnedMessageIds
+          if (response.pinnedMessageIds && response.pinnedMessageIds.length > 0) {
+            conversation.pinnedMessages = response.messages
+              .filter(m => response.pinnedMessageIds.includes(m.id))
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          } else {
+            conversation.pinnedMessages = [];
+          }
           
           // Move the newly created conversation to the top of the list
           const index = conversations.value.indexOf(conversation);
@@ -331,16 +340,43 @@ const useStore = defineStore("chat", () => {
     try {
       const updatedConversation = await apiService.updateConversation(conversationId, updates);
       
+      console.log('[Store] updateConversation - Updated conversation from API:', updatedConversation);
+      
       // Update the conversation in the local store
       const index = conversations.value.findIndex(c => c.id === conversationId);
       if (index !== -1) {
-        conversations.value[index] = { ...conversations.value[index], ...updatedConversation };
+        // Update specific fields to trigger reactivity
+        if (updatedConversation.name !== undefined) {
+          conversations.value[index].name = updatedConversation.name;
+        }
+        if (updatedConversation.displayPhoto !== undefined) {
+          conversations.value[index].displayPhoto = updatedConversation.displayPhoto;
+        }
+        if (updatedConversation.avatarA !== undefined) {
+          conversations.value[index].avatarA = updatedConversation.avatarA;
+        }
+        if (updatedConversation.avatarB !== undefined) {
+          conversations.value[index].avatarB = updatedConversation.avatarB;
+        }
+        console.log('[Store] Updated conversation in active list:', conversations.value[index]);
       }
       
       // Also check archived conversations
       const archivedIndex = archivedConversations.value.findIndex(c => c.id === conversationId);
       if (archivedIndex !== -1) {
-        archivedConversations.value[archivedIndex] = { ...archivedConversations.value[archivedIndex], ...updatedConversation };
+        if (updatedConversation.name !== undefined) {
+          archivedConversations.value[archivedIndex].name = updatedConversation.name;
+        }
+        if (updatedConversation.displayPhoto !== undefined) {
+          archivedConversations.value[archivedIndex].displayPhoto = updatedConversation.displayPhoto;
+        }
+        if (updatedConversation.avatarA !== undefined) {
+          archivedConversations.value[archivedIndex].avatarA = updatedConversation.avatarA;
+        }
+        if (updatedConversation.avatarB !== undefined) {
+          archivedConversations.value[archivedIndex].avatarB = updatedConversation.avatarB;
+        }
+        console.log('[Store] Updated conversation in archived list:', archivedConversations.value[archivedIndex]);
       }
       
       return updatedConversation;
@@ -442,16 +478,40 @@ const useStore = defineStore("chat", () => {
       if (conversation && messageId) {
         const message = conversation.messages.find(m => m.id === messageId);
         if (message) {
-          conversation.pinnedMessage = message;
-          conversation.pinnedMessageHidden = false;
+          // Add to pinnedMessages array if not already there
+          if (!conversation.pinnedMessages) {
+            conversation.pinnedMessages = [];
+          }
+          if (!conversation.pinnedMessages.find(pm => pm.id === messageId)) {
+            conversation.pinnedMessages.push(message);
+            // Sort by message date (latest first)
+            conversation.pinnedMessages.sort((a, b) => 
+              new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+          }
         }
       } else if (conversation && messageId === null) {
-        // Unpin
-        conversation.pinnedMessage = undefined;
-        conversation.pinnedMessageHidden = true;
+        // Unpin all
+        conversation.pinnedMessages = [];
       }
     } catch (error) {
       console.error('Failed to pin message:', error);
+      throw error;
+    }
+  };
+
+  const unpinMessage = async (conversationId: number, messageId: number) => {
+    try {
+      await apiService.unpinMessage(conversationId, messageId);
+      
+      // Update local store
+      const conversation = conversations.value.find(c => c.id === conversationId) ||
+                          archivedConversations.value.find(c => c.id === conversationId);
+      if (conversation && conversation.pinnedMessages) {
+        conversation.pinnedMessages = conversation.pinnedMessages.filter(pm => pm.id !== messageId);
+      }
+    } catch (error) {
+      console.error('Failed to unpin message:', error);
       throw error;
     }
   };
@@ -531,6 +591,7 @@ const useStore = defineStore("chat", () => {
     deleteConversation,
     deleteMessage,
     pinMessage,
+    unpinMessage,
     markMessageAsRead,
     initializeAuth,
     initializeSocketListeners,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IConversation, IMessage } from "@src/types";
-import { inject } from "vue";
+import { inject, type Ref } from "vue";
 
 import useStore from "@src/store/store";
 import { getConversationIndex } from "@src/utils";
@@ -29,18 +29,32 @@ const props = defineProps<{
 
 const store = useStore();
 
-const activeConversation = <IConversation>inject("activeConversation");
+const activeConversation = inject<Ref<IConversation | undefined>>("activeConversation");
 
 // (event) pin message to conversation
 const handlePinMessage = async () => {
   props.handleCloseContextMenu();
 
-  if (activeConversation) {
+  if (activeConversation?.value) {
     try {
-      await store.pinMessage(activeConversation.id, props.message.id);
+      await store.pinMessage(activeConversation.value.id, props.message.id);
     } catch (error) {
       console.error('Failed to pin message:', error);
       alert('Failed to pin message. Please try again.');
+    }
+  }
+};
+
+// (event) unpin message from conversation
+const handleUnpinMessage = async () => {
+  props.handleCloseContextMenu();
+
+  if (activeConversation?.value) {
+    try {
+      await store.unpinMessage(activeConversation.value.id, props.message.id);
+    } catch (error) {
+      console.error('Failed to unpin message:', error);
+      alert('Failed to unpin message. Please try again.');
     }
   }
 };
@@ -116,6 +130,18 @@ const handleDeleteMessage = async () => {
     </button>
 
     <button
+      v-if="activeConversation?.value?.pinnedMessages?.some(pm => pm.id === props.message.id)"
+      class="dropdown-link dropdown-link-primary"
+      role="menuitem"
+      aria-label="unpin this message"
+      @click="handleUnpinMessage"
+    >
+      <BookmarkSquareIcon class="h-5 w-5 mr-3" />
+      Unpin
+    </button>
+
+    <button
+      v-else
       class="dropdown-link dropdown-link-primary"
       role="menuitem"
       aria-label="pin this message"

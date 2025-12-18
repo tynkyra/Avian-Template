@@ -1,22 +1,22 @@
 <script setup lang="ts">
+import { inject, computed, ref, type Ref } from "vue";
 import type {
   IConversation,
   IMessage,
   IPreviewData,
   IRecording,
 } from "@src/types";
-import type { Ref } from "vue";
 
 import linkifyStr from "linkify-string";
-import { inject, ref } from "vue";
 
-import { getFullName, getMessageById } from "@src/utils";
+import { getFullName, getMessageById, formatTime } from "@src/utils";
 
 import Attachments from "@src/components/views/HomeView/Chat/ChatMiddle/Message/Attachments.vue";
 import LinkPreview from "@src/components/views/HomeView/Chat/ChatMiddle/Message/LinkPreview.vue";
 import MessageContextMenu from "@src/components/views/HomeView/Chat/ChatMiddle/Message/MessageContextMenu.vue";
 import Receipt from "@src/components/views/HomeView/Chat/ChatMiddle/Message/Receipt.vue";
 import Recording from "@src/components/views/HomeView/Chat/ChatMiddle/Message/Recording.vue";
+import { BookmarkIcon } from "@heroicons/vue/24/solid";
 import MessagePreview from "@src/components/views/HomeView/Chat/MessagePreview.vue";
 
 const props = defineProps<{
@@ -29,7 +29,12 @@ const props = defineProps<{
   handleDeselectMessage: (messageId: number) => void;
 }>();
 
-const activeConversation = <IConversation>inject("activeConversation");
+const activeConversation = inject<Ref<IConversation | undefined>>("activeConversation");
+
+// Check if this message is pinned
+const isPinned = computed(() => {
+  return activeConversation?.value?.pinnedMessages?.some(pm => pm.id === props.message.id) || false;
+});
 
 const showContextMenu = ref(false);
 
@@ -123,7 +128,7 @@ const formatTime = (dateString: string): string => {
           @click="handleCloseContextMenu"
           v-click-outside="contextConfig"
           @contextmenu.prevent="handleShowContextMenu"
-          class="group max-w-125 p-5 rounded-b-xl transition duration-500"
+          class="group max-w-125 p-5 rounded-b-xl transition duration-500 relative"
           :class="{
             'rounded-tl-xl ml-4 order-2 bg-indigo-50 dark:bg-gray-600':
               props.self && !props.selected,
@@ -208,6 +213,14 @@ const formatTime = (dateString: string): string => {
             :preview-data="props.message.previewData as IPreviewData"
             class="mt-5"
           />
+
+          <!--pinned indicator-->
+          <div
+            v-if="isPinned"
+            class="absolute bottom-1 right-1"
+          >
+            <BookmarkIcon class="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+          </div>
         </div>
 
         <!--time-->

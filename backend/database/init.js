@@ -194,5 +194,18 @@ export const initDatabase = () => {
     )
   `);
 
+  // Pinned messages table (for multiple pinned messages per conversation)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pinned_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      message_id INTEGER NOT NULL,
+      pinned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES conversations (id),
+      FOREIGN KEY (message_id) REFERENCES messages (id),
+      UNIQUE(conversation_id, message_id)
+    )
+  `);
+
   console.log('📋 Database tables initialized');
 };
