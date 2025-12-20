@@ -201,7 +201,7 @@ const formatTime = (dateString: string): string => {
             "
           >
             <Recording
-              :recording="<IRecording>props.message.content"
+              :recording="typeof props.message.content === 'string' ? JSON.parse(props.message.content) : props.message.content"
               :self="props.self"
             />
           </div>

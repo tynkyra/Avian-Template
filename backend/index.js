@@ -9,6 +9,7 @@ import conversationRoutes from './routes/conversations.js';
 import userRoutes from './routes/users.js';
 import { initDatabase } from './database/init.js';
 import { authenticateToken } from './middleware/auth.js';
+import recordingsRoutes from './routes/recordings.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+app.use('/uploads', recordingsRoutes);
 
 // Initialize database
 initDatabase();

@@ -74,21 +74,13 @@ const handleCloseConversation = () => {
       </button>
 
       <!--name and last seen-->
-      <div class="flex flex-col">
+      <div class="flex items-center">
         <p
           class="w-fit heading-2 text-black/70 dark:text-white/70 mb-2 cursor-pointer"
           @click="props.handleOpenInfo"
           tabindex="0"
         >
           {{ getName(activeConversation) }}
-        </p>
-
-        <p
-          class="body-2 text-black/70 dark:text-white/70 font-extralight rounded-[.25rem]"
-          tabindex="0"
-          aria-label="Last seen december 16, 2019"
-        >
-          Last seen Dec 16, 2019
         </p>
       </div>
     </div>

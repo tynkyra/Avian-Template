@@ -183,16 +183,20 @@ const useStore = defineStore("chat", () => {
     try {
       // Get the conversation to access its avatars
       const conversation = conversations.value.find(c => c.id === conversationId);
-      
+      if (!conversation) {
+        console.error('Cannot send message: Conversation not found for id', conversationId);
+        throw new Error('Conversation not found. Please try again after the chat appears in your list.');
+      }
+
       // Get the avatar URL based on which avatar is active
       const avatarUrl = activeAvatar.value === 'A' 
         ? (conversation as any)?.avatarA 
         : (conversation as any)?.avatarB;
-      
+
       console.log('[Store] Sending message with avatarUrl:', avatarUrl, 'activeAvatar:', activeAvatar.value);
       console.log('[Store] Conversation avatarA:', (conversation as any)?.avatarA);
       console.log('[Store] Conversation avatarB:', (conversation as any)?.avatarB);
-      
+
       const message = await apiService.sendMessage({
         conversationId,
         content,
@@ -202,18 +206,16 @@ const useStore = defineStore("chat", () => {
       });
 
       // Add message to local store
-      if (conversation) {
-        conversation.messages.push(message);
-        
-        // Move conversation to the top of the list
-        const index = conversations.value.indexOf(conversation);
-        if (index > 0) {
-          // Create a new array to trigger reactivity
-          const updated = [...conversations.value];
-          updated.splice(index, 1);
-          updated.unshift(conversation);
-          conversations.value = updated;
-        }
+      conversation.messages.push(message);
+
+      // Move conversation to the top of the list
+      const index = conversations.value.indexOf(conversation);
+      if (index > 0) {
+        // Create a new array to trigger reactivity
+        const updated = [...conversations.value];
+        updated.splice(index, 1);
+        updated.unshift(conversation);
+        conversations.value = updated;
       }
 
       // Emit socket event for real-time updates
@@ -356,14 +358,13 @@ const useStore = defineStore("chat", () => {
             conversation.pinnedMessages = [];
           }
           
-          // Move the newly created conversation to the top of the list
-          const index = conversations.value.indexOf(conversation);
-          if (index > 0) {
-            const updated = [...conversations.value];
-            updated.splice(index, 1);
-            updated.unshift(conversation);
-            conversations.value = updated;
-          }
+          // Always sort self-chats by descending ID so newest is at the top
+          conversations.value = [
+            ...conversations.value
+              .filter(c => c.type === 'self_chat')
+              .sort((a, b) => b.id - a.id),
+            ...conversations.value.filter(c => c.type !== 'self_chat')
+          ];
         }
       }
       

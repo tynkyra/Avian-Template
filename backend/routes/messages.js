@@ -20,6 +20,18 @@ const storage = multer.diskStorage({
   }
 });
 
+// Configure multer for recording uploads
+const recordingStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/recordings/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname) || '.webm';
+    cb(null, uniqueSuffix + ext);
+  }
+});
+
 const upload = multer({ 
   storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
@@ -132,8 +144,13 @@ router.post('/attachments', upload.array('files', 10), (req, res) => {
   );
 });
 
+const recordingUpload = multer({ 
+  storage: recordingStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for recordings
+});
+
 // Send recording
-router.post('/recording', upload.single('recording'), (req, res) => {
+router.post('/recording', recordingUpload.single('recording'), (req, res) => {
   const { conversationId, duration, avatarUrl } = req.body;
   const senderId = req.user.userId;
   const file = req.file;
@@ -162,7 +179,7 @@ router.post('/recording', upload.single('recording'), (req, res) => {
       }
 
       // Create recording object
-      const fileUrl = `http://127.0.0.1:3003/uploads/attachments/${file.filename}`;
+      const fileUrl = `http://127.0.0.1:3003/uploads/recordings/${file.filename}`;
       const fileSizeKB = (file.size / 1024).toFixed(2);
       const recording = {
         id: Date.now(), // Temporary ID for recording object
@@ -372,24 +389,36 @@ router.get('/:conversationId', (req, res) => {
                 });
               }
 
-              const formattedMessages = messages.map(msg => ({
-                id: msg.id,
-                type: msg.type,
-                content: msg.content,
-                date: msg.date,
-                replyTo: msg.replyTo,
-                state: msg.state,
-                attachments: attachmentsByMessage[msg.id] || undefined,
-                sender: {
-                  id: msg.sender_id,
-                  firstName: msg.sender_firstName,
-                  lastName: msg.sender_lastName,
-                  email: msg.sender_email,
-                  // Use avatar_url if available, otherwise fallback to sender_avatar, then conversation's avatar_a
-                  avatar: msg.avatarUrl || msg.sender_avatar || conversation?.avatar_a || null,
-                  lastSeen: msg.sender_lastSeen
+              const formattedMessages = messages.map(msg => {
+                // Parse content if it's a recording type (stored as JSON)
+                let content = msg.content;
+                if (msg.type === 'recording' && typeof content === 'string') {
+                  try {
+                    content = JSON.parse(content);
+                  } catch (e) {
+                    console.error('[Backend GET] Error parsing recording content:', e);
+                  }
                 }
-              })).reverse();
+                
+                return {
+                  id: msg.id,
+                  type: msg.type,
+                  content: content,
+                  date: msg.date,
+                  replyTo: msg.replyTo,
+                  state: msg.state,
+                  attachments: attachmentsByMessage[msg.id] || undefined,
+                  sender: {
+                    id: msg.sender_id,
+                    firstName: msg.sender_firstName,
+                    lastName: msg.sender_lastName,
+                    email: msg.sender_email,
+                    // Use avatar_url if available, otherwise fallback to sender_avatar, then conversation's avatar_a
+                    avatar: msg.avatarUrl || msg.sender_avatar || conversation?.avatar_a || null,
+                    lastSeen: msg.sender_lastSeen
+                  }
+                };
+              }).reverse();
 
               // Get pinned messages for this conversation
               db.all(`

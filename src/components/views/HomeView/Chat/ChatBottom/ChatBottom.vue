@@ -44,6 +44,9 @@ const audioChunks: Ref<Blob[]> = ref([]);
 const recordingDuration = ref(0);
 const recordingTimer: Ref<number | null> = ref(null);
 
+// Waveform heights (fixed pattern)
+const waveformHeights = [12, 18, 24, 30, 22, 16, 20, 28, 32, 26, 18, 14, 22, 30, 28, 20, 16, 24, 28, 22];
+
 // open emoji picker.
 const showPicker = ref(false);
 
@@ -69,26 +72,46 @@ const handleToggleRecording = async () => {
     // Start recording
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      
+      // Prefer OGG, then WAV, then fallback to WEBM
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+        mimeType = 'audio/wav';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else {
+        mimeType = '';
+      }
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
       audioChunks.value = [];
       recordingDuration.value = 0;
-      
+
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunks.value.push(event.data);
         }
       };
-      
+
       recorder.onstop = async () => {
         // Stop all audio tracks
         stream.getTracks().forEach(track => track.stop());
-        
+
         // Create audio blob and send
         if (audioChunks.value.length > 0 && activeConversation.value) {
-          const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
-          const audioFile = new File([audioBlob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
-          
+          let extension = 'webm';
+          let fileMime = 'audio/webm';
+          if (mimeType.startsWith('audio/ogg')) {
+            extension = 'ogg';
+            fileMime = 'audio/ogg';
+          } else if (mimeType.startsWith('audio/wav')) {
+            extension = 'wav';
+            fileMime = 'audio/wav';
+          }
+          const audioBlob = new Blob(audioChunks.value, { type: fileMime });
+          const audioFile = new File([audioBlob], `recording-${Date.now()}.${extension}`, { type: fileMime });
+
           try {
             // Send recording as attachment
             await store.sendRecording(
@@ -101,18 +124,18 @@ const handleToggleRecording = async () => {
             alert('Failed to send recording. Please try again.');
           }
         }
-        
+
         // Clear timer
         if (recordingTimer.value) {
           clearInterval(recordingTimer.value);
           recordingTimer.value = null;
         }
       };
-      
+
       recorder.start();
       mediaRecorder.value = recorder;
       recording.value = true;
-      
+
       // Start duration timer
       recordingTimer.value = window.setInterval(() => {
         recordingDuration.value++;
@@ -134,6 +157,10 @@ const handleToggleRecording = async () => {
 // Cancel recording without sending
 const handleCancelRecording = () => {
   if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+    // Remove the onstop handler temporarily to prevent sending
+    const originalOnStop = mediaRecorder.value.onstop;
+    mediaRecorder.value.onstop = null;
+    
     // Stop the recorder
     mediaRecorder.value.stop();
     
@@ -151,6 +178,7 @@ const handleCancelRecording = () => {
   audioChunks.value = [];
   recordingDuration.value = 0;
   recording.value = false;
+  mediaRecorder.value = null;
 };
 
 // close picker when you click outside.
@@ -316,14 +344,12 @@ const handleCloseAttachmentsModal = () => {
     <div
       class="h-auto min-h-21 p-5 flex items-end"
       v-if="store.status !== 'loading'"
-      :class="recording ? ['justify-between'] : []"
     >
  
 
-      <div class="min-h-[2.75rem]">
+      <div class="min-h-[2.75rem]" v-if="!recording">
         <!--select attachments button-->
         <IconButton
-          v-if="!recording"
           class="ic-btn-ghost-primary w-7 h-7 md:mr-5 xs:mr-4"
           title="open select attachments modal"
           aria-label="open select attachments modal"
@@ -331,13 +357,41 @@ const handleCloseAttachmentsModal = () => {
         >
           <PaperClipIcon class="w-[1.25rem] h-[1.25rem]" />
         </IconButton>
-
-        <!--recording timer-->
-        <p v-if="recording" class="body-1 text-indigo-300">{{ formatDuration(recordingDuration) }}</p>
       </div>
 
-           <!-- Avatar Bubble -->
-      <div class="mr-3 mb-2" v-if="activeConversation">
+      <!--recording timer and avatar when recording-->
+      <div v-if="recording" class="flex items-center gap-4 min-h-[2.75rem]">
+        <p class="body-1 text-indigo-300">{{ formatDuration(recordingDuration) }}</p>
+        
+        <!-- Avatar Bubble -->
+        <div v-if="activeConversation">
+          <button
+            @click="store.toggleAvatar()"
+            class="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-offset-2 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4"
+            :class="store.activeAvatar === 'A' 
+              ? 'ring-blue-500 focus:ring-blue-300' 
+              : 'ring-yellow-500 focus:ring-yellow-300'"
+            :title="`Currently speaking as Avatar ${store.activeAvatar}. Click to switch.`"
+          >
+            <img
+              :src="store.activeAvatar === 'A' ? activeConversation.avatarA : activeConversation.avatarB"
+              :alt="`Avatar ${store.activeAvatar}`"
+              class="w-full h-full object-cover"
+            />
+          </button>
+        </div>
+      </div>
+
+      <!--pulsing recording icon during recording-->
+      <div v-if="recording" class="flex items-center justify-center grow mb-2">
+        <div class="relative w-7 h-7 flex items-center justify-center">
+          <MicrophoneIcon class="w-[1.25rem] h-[1.25rem] text-indigo-400 z-10 relative" />
+          <span class="animate-ping absolute inset-0 rounded-full bg-indigo-300 opacity-75"></span>
+        </div>
+      </div>
+
+           <!-- Avatar Bubble (when not recording) -->
+      <div class="mr-3 mb-2" v-if="activeConversation && !recording">
         <button
           @click="store.toggleAvatar()"
           class="relative w-7 h-7 rounded-full overflow-hidden ring-2 ring-offset-2 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4"
@@ -351,13 +405,6 @@ const handleCloseAttachmentsModal = () => {
             :alt="`Avatar ${store.activeAvatar}`"
             class="w-full h-full object-cover"
           />
-          <!-- Active indicator badge -->
-          <div 
-            class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold text-white"
-            :class="store.activeAvatar === 'A' ? 'bg-blue-500' : 'bg-yellow-500'"
-          >
-            {{ store.activeAvatar }}
-          </div>
         </button>
       </div>
 
@@ -407,38 +454,28 @@ const handleCloseAttachmentsModal = () => {
         </div>
       </div>
 
-      <div class="min-h-[2.75rem]">
+      <div v-if="recording" class="flex items-center gap-3 min-h-[2.75rem] ml-auto">
         <!--cancel recording button-->
-        <div v-if="recording" @click="handleCancelRecording">
+        <div @click="handleCancelRecording">
           <Button class="ghost-danger ghost-text"> Cancel </Button>
         </div>
-      </div>
 
-      <div class="min-h-[2.75rem] flex">
         <!--finish recording button-->
+        <!--send recording button-->
         <IconButton
           v-if="recording"
-          title="finish recording"
-          aria-label="finish recording"
+          title="send recording"
+          aria-label="send recording"
           @click="handleToggleRecording"
-          class="relative group w-7 h-7 flex justify-center items-center outline-none rounded-full bg-indigo-300 hover:bg-green-300 dark:hover:bg-green-400 dark:focus:bg-green-400 focus:outline-none transition-all duration-200"
+          class="ic-btn-contained-primary w-7 h-7 active:scale-110"
         >
-          <span
-            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-300 group-hover:bg-green-300 opacity-40"
-          >
-          </span>
-
-          <MicrophoneIcon
-            class="w-[1.25rem] h-[1.25rem] text-white group-hover:hidden"
-          />
-          <CheckIcon
-            class="w-[1.25rem] h-[1.25rem] hidden text-white group-hover:block"
-          />
+          <PaperAirplaneIcon class="w-4.25 h-4.25" />
         </IconButton>
+      </div>
 
+      <div class="min-h-[2.75rem] flex" v-if="!recording">
         <!--start recording button-->
         <IconButton
-          v-else
           @click="handleToggleRecording"
           title="start recording"
           aria-label="start recording"
@@ -449,7 +486,6 @@ const handleCloseAttachmentsModal = () => {
 
         <!--send message button-->
         <IconButton
-          v-if="!recording"
           @click="handleSendMessage"
           class="ic-btn-contained-primary w-7 h-7 active:scale-110"
           title="send message"
@@ -489,5 +525,14 @@ input[placeholder="Search emoji"] {
 
 .v3-emoji-picker .v3-footer {
   border-top: 0;
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
 }
 </style>

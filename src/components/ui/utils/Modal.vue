@@ -57,39 +57,41 @@ watch(
 </script>
 
 <template>
-  <div
-    role="dialog"
-    class="relative z-50"
-    :aria-hidden="!props.open"
-    aria-labelledby="modal-title"
-    aria-modal="true"
-  >
-    <!--overlay-->
-    <Transition name="fade">
-      <div
-        v-show="props.open"
-        class="fixed inset-0 bg-black/60 transition-opacity"
-      ></div>
-    </Transition>
-
-    <!--modal-->
-    <SlideTransition animation="slide-down">
-      <div
-        v-show="props.open"
-        class="fixed inset-0 z-10 h-full overflow-y-auto"
-      >
+  <Teleport to="body">
+    <div
+      role="dialog"
+      class="relative z-50"
+      :aria-hidden="!props.open"
+      aria-labelledby="modal-title"
+      aria-modal="true"
+    >
+      <!--overlay-->
+      <Transition name="fade">
         <div
-          ref="modal"
-          @click="closeOnClick"
-          id="close-modal"
-          class="h-full flex items-center justify-center p-4 text-center sm:items-center sm:p-0"
+          v-show="props.open"
+          class="fixed inset-0 bg-black/60 transition-opacity"
+        ></div>
+      </Transition>
+
+      <!--modal-->
+      <SlideTransition animation="slide-down">
+        <div
+          v-show="props.open"
+          class="fixed inset-0 z-10 h-full overflow-y-auto"
         >
-          <!--content-->
-          <slot name="content"></slot>
+          <div
+            ref="modal"
+            @click="closeOnClick"
+            id="close-modal"
+            class="h-full flex items-center justify-center p-4 text-center sm:items-center sm:p-0"
+          >
+            <!--content-->
+            <slot name="content"></slot>
+          </div>
         </div>
-      </div>
-    </SlideTransition>
-  </div>
+      </SlideTransition>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>

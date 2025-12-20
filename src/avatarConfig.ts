@@ -71,7 +71,7 @@ export const avatarLibrary = [
   {
     id: "Snorlax",
     name: "Snorlax",
-    image: "https://i.ebayimg.com/00/s/MTI0MFgxNDI0/z/5nIAAOSw4zxl-lK4/$_57.PNG?set_id=8800005007",
+    image: "https://cdn.dribbble.com/userupload/21468479/file/original-cd73ae534c20b3129380bdd628cc08c8.gif",
     category: "Pokemon"
   },
   {
