@@ -39,4 +39,6 @@ const store = useStore();
       <NoNotifications v-else />
     </div>
   </div>
+  </template>
+  <!-- Deleted: Notifications.vue (notifications feature removed) -->
 </template>

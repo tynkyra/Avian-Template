@@ -3,7 +3,7 @@ import type { Ref } from "vue";
 
 import { computed, ref } from "vue";
 
-import ContactsTab from "@src/components/shared/modals/ComposeModal/ContactsTab.vue";
+// ContactsTab import removed (contacts feature removed)
 import GroupTab from "@src/components/shared/modals/ComposeModal/GroupTab/GroupTab.vue";
 import Button from "@src/components/ui/inputs/Button.vue";
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
@@ -30,7 +30,7 @@ const handleSwitchTab = (tabName: string) => {
 // the active tab contacts or group.
 const activeTab = computed(() => {
   if (activeTabName.value === "contacts") {
-    return ContactsTab;
+    // ContactsTab removed (contacts feature removed)
   } else {
     return GroupTab;
   }

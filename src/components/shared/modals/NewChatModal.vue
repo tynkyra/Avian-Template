@@ -23,17 +23,17 @@ const router = useRouter();
 // Calculate next available chat number
 const getNextChatTitle = () => {
   const existingChats = store.conversations
-    .filter((c: any) => c.type === 'self_chat')
-    .map((c: any) => c.name || '');
+    .filter(c => c.type === 'self_chat')
+    .map(c => c.name || '');
   
   // Check if "New Chat" exists
-  if (!existingChats.some((name: string) => name.toLowerCase() === 'new chat')) {
+  if (!existingChats.some(name => name.toLowerCase() === 'new chat')) {
     return 'New Chat';
   }
   
   // Find the next available number
   let counter = 1;
-  while (existingChats.some((name: string) => name.toLowerCase() === `new chat ${counter}`)) {
+  while (existingChats.some(name => name.toLowerCase() === `new chat ${counter}`)) {
     counter++;
   }
   
@@ -179,8 +179,8 @@ const createNewChat = async () => {
     // Check for duplicate names and auto-increment if needed
     let finalTitle = chatTitle.value.trim();
     const existingNames = store.conversations
-      .filter((c: any) => c.type === 'self_chat')
-      .map((c: any) => c.name?.toLowerCase());
+      .filter(c => c.type === 'self_chat')
+      .map(c => c.name?.toLowerCase());
     
     // If title exists, add a number suffix
     if (existingNames.includes(finalTitle.toLowerCase())) {

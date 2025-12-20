@@ -1,17 +1,4 @@
-<script setup lang="ts">
-import useStore from "@src/store/store";
-
-import AccordionButton from "@src/components/ui/data-display/AccordionButton.vue";
-import Collapse from "@src/components/ui/utils/Collapse.vue";
-import SettingsSwitch from "@src/components/views/HomeView/Sidebar/Settings/SettingsAccordion/SettingsSwitch.vue";
-
-const props = defineProps<{
-  collapsed: boolean;
-  handleToggle: () => void;
-}>();
-
-const store = useStore();
-</script>
+<!-- Deleted: NotificationsSettings.vue (notifications feature removed) -->
 
 <template>
   <!--notifications settings-->

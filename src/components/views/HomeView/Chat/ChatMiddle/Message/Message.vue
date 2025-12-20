@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import { inject, computed, ref, type Ref, getCurrentInstance } from "vue";
 // --- Swipe-to-reply gesture logic ---
-
 const swipeData = ref({
   startX: 0,
   startY: 0,
   deltaX: 0,
   deltaY: 0,
   swiping: false,
-  animating: false,
 });
 
 const swipeThreshold = 60; // px
-const maxSwipe = 120; // px, max distance allowed
-
-const ease = (value: number, factor = 0.2) => value * factor;
 
 const handleSwipeStart = (e: TouchEvent | MouseEvent) => {
   swipeData.value.swiping = true;
-  swipeData.value.animating = false;
   if (e instanceof TouchEvent) {
     swipeData.value.startX = e.touches[0].clientX;
     swipeData.value.startY = e.touches[0].clientY;
@@ -30,6 +24,7 @@ const handleSwipeStart = (e: TouchEvent | MouseEvent) => {
   }
 };
 
+const MAX_SWIPE_DISTANCE = 120;
 const handleSwipeMove = (e: TouchEvent | MouseEvent) => {
   if (!swipeData.value.swiping) return;
   let clientX, clientY;
@@ -41,43 +36,46 @@ const handleSwipeMove = (e: TouchEvent | MouseEvent) => {
     clientY = e.clientY;
   }
   let rawDeltaX = clientX - swipeData.value.startX;
-  // Clamp to maxSwipe
-  if (rawDeltaX > maxSwipe) rawDeltaX = maxSwipe;
-  if (rawDeltaX < -maxSwipe) rawDeltaX = -maxSwipe;
-  swipeData.value.deltaX = rawDeltaX;
+  // Clamp to max distance and add easing
+  let eased = Math.abs(rawDeltaX) > MAX_SWIPE_DISTANCE
+    ? Math.sign(rawDeltaX) * MAX_SWIPE_DISTANCE
+    : rawDeltaX * 0.7;
+  swipeData.value.deltaX = eased;
   swipeData.value.deltaY = clientY - swipeData.value.startY;
-};
-
-const animateSnapBack = () => {
-  swipeData.value.animating = true;
-  const animation = () => {
-    if (Math.abs(swipeData.value.deltaX) < 1) {
-      swipeData.value.deltaX = 0;
-      swipeData.value.animating = false;
-      return;
-    }
-    swipeData.value.deltaX -= ease(swipeData.value.deltaX);
-    requestAnimationFrame(animation);
-  };
-  animation();
 };
 
 const handleSwipeEnd = (e: TouchEvent | MouseEvent) => {
   if (!swipeData.value.swiping) return;
-  swipeData.value.swiping = false;
   // Only horizontal swipe, ignore vertical
+  let shouldReply = false;
   if (Math.abs(swipeData.value.deltaX) > Math.abs(swipeData.value.deltaY)) {
     // Left message (not self): swipe right to reply
     if (!props.self && swipeData.value.deltaX > swipeThreshold) {
-      triggerReply();
+      shouldReply = true;
     }
     // Right message (self): swipe left to reply
     if (props.self && swipeData.value.deltaX < -swipeThreshold) {
-      triggerReply();
+      shouldReply = true;
     }
   }
   // Animate snap-back
-  animateSnapBack();
+  const start = swipeData.value.deltaX;
+  const duration = 180;
+  const startTime = performance.now();
+  function animateSnapBack(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    // Ease out
+    swipeData.value.deltaX = start * (1 - t);
+    if (t < 1) {
+      requestAnimationFrame(animateSnapBack);
+    } else {
+      swipeData.value.deltaX = 0;
+      swipeData.value.swiping = false;
+    }
+  }
+  requestAnimationFrame(animateSnapBack);
+  if (shouldReply) triggerReply();
   swipeData.value.deltaY = 0;
   window.removeEventListener('mousemove', handleSwipeMove);
   window.removeEventListener('mouseup', handleSwipeEnd);
@@ -175,13 +173,12 @@ const hideAvatar = () => {
 };
 
 // reply message with avatarType injected if missing
-// import type { IMessage } from "@src/types"; (duplicate removed)
-let replyMessage = getMessageById(activeConversation?.value, props.message.replyTo) as IMessage | undefined;
+let replyMessage = getMessageById(activeConversation?.value, props.message.replyTo);
 if (replyMessage && !replyMessage.avatarType && activeConversation?.value) {
   if (replyMessage.sender?.avatar === activeConversation.value.avatarA) {
-    replyMessage = { ...replyMessage, avatarType: 'A' } as IMessage;
+    replyMessage = { ...replyMessage, avatarType: 'A' };
   } else if (replyMessage.sender?.avatar === activeConversation.value.avatarB) {
-    replyMessage = { ...replyMessage, avatarType: 'B' } as IMessage;
+    replyMessage = { ...replyMessage, avatarType: 'B' };
   }
 }
 
@@ -236,11 +233,7 @@ const formatTime = (dateString: string): string => {
             'rounded-tr-xl mr-4 bg-indigo-200 dark:bg-indigo-500':
               !props.self && props.selected,
           }"
-          :style="
-            swipeData.swiping || swipeData.animating
-              ? `transform: translateX(${swipeData.deltaX}px); transition: ${swipeData.animating ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'};`
-              : ''
-          "
+          :style="swipeData.swiping || swipeData.deltaX !== 0 ? `transform: translateX(${swipeData.deltaX}px); transition: ${swipeData.swiping ? 'none' : 'transform 0.18s cubic-bezier(0.4,0,0.2,1)'};` : ''"
           @touchstart="handleSwipeStart"
           @touchmove="handleSwipeMove"
           @touchend="handleSwipeEnd"
@@ -329,15 +322,9 @@ const formatTime = (dateString: string): string => {
         </div>
 
         <!--time-->
-
-        <!--time (moves with bubble)-->
         <div
           :class="props.self ? ['ml-4', 'order-1'] : ['mr-4']"
-          :style="
-            swipeData.swiping || swipeData.animating
-              ? `transform: translateX(${swipeData.deltaX}px); transition: ${swipeData.animating ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'};`
-              : ''
-          "
+          :style="swipeData.swiping || swipeData.deltaX !== 0 ? `transform: translateX(${swipeData.deltaX}px); transition: ${swipeData.swiping ? 'none' : 'transform 0.18s cubic-bezier(0.4,0,0.2,1)'};` : ''"
         >
           <p class="body-1 text-black/70 dark:text-white/70 whitespace-nowrap">
             {{ formatTime(props.message.date) }}

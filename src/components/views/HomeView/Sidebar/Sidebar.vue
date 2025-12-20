@@ -6,23 +6,13 @@ import useStore from "@src/store/store";
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
 import Calls from "@src/components/views/HomeView/Sidebar/Calls/Calls.vue";
 import Conversations from "@src/components/views/HomeView/Sidebar/Conversations/Conversations.vue";
-import Notifications from "@src/components/views/HomeView/Sidebar/Notifications/Notifications.vue";
+// Notifications import removed (notifications feature removed)
 import Settings from "@src/components/views/HomeView/Sidebar/Settings/Settings.vue";
 
 const store = useStore();
 
-// the selected sidebar component (e.g message/notifications/settings)
-const ActiveComponent = computed((): any => {
-  if (store.activeSidebarComponent === "messages") {
-    return Conversations;
-  } else if (store.activeSidebarComponent === "notifications") {
-    return Notifications;
-  } else if (store.activeSidebarComponent === "phone") {
-    return Calls;
-  } else if (store.activeSidebarComponent === "settings") {
-    return Settings;
-  }
-});
+// Always show messages (Conversations) in the sidebar
+const ActiveComponent = computed(() => Conversations);
 </script>
 
 <template>
