@@ -10,7 +10,7 @@ import IconButton from "@src/components/ui/inputs/IconButton.vue";
 import TextInput from "@src/components/ui/inputs/TextInput.vue";
 import Modal from "@src/components/ui/utils/Modal.vue";
 import { avatarLibrary, getAvatarImageById, getAvatarNameById } from "@src/avatarConfig";
-import { getAvatar, getName } from "@src/utils";
+import { getAvatar, getName, getInitials } from "@src/utils";
 import useStore from "@src/store/store";
 import { apiService } from "@src/services/api";
 
@@ -53,8 +53,8 @@ const getAvatarIdFromUrl = (url: string) => {
 
 // Initialize with conversation's actual avatars
 const selectedAvatarImages = ref({
-  A: getAvatarIdFromUrl(props.conversation.avatarA || props.conversation.avatar_a || ""),
-  B: getAvatarIdFromUrl(props.conversation.avatarB || props.conversation.avatar_b || "")
+  A: getAvatarIdFromUrl(props.conversation.avatarA || ""),
+  B: getAvatarIdFromUrl(props.conversation.avatarB || "")
 });
 
 // File input ref
@@ -207,16 +207,22 @@ const saveChanges = async () => {
         <div class="relative">
           <button
             @click="openGroupPicturePicker"
-            class="w-11 h-11 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center text-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            class="w-11 h-11 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center text-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors overflow-hidden"
             title="Change group picture"
           >
-            <img 
-              v-if="groupPicturePreview" 
-              :src="groupPicturePreview" 
-              alt="Group picture" 
-              class="w-full h-full rounded-full object-cover"
-            />
-            <span v-else>👥</span>
+            <div
+              v-if="getAvatar(props.conversation)"
+              :style="{ backgroundImage: `url(${getAvatar(props.conversation)})` }"
+              class="w-full h-full rounded-full bg-cover bg-center"
+            ></div>
+            <div
+              v-else
+              class="w-full h-full flex items-center justify-center bg-gray-400 dark:bg-gray-600 rounded-full"
+            >
+              <span class="text-xs font-semibold text-white">
+                {{ getInitials(props.conversation) }}
+              </span>
+            </div>
           </button>
           <!-- Edit icon for group picture -->
           <div class="absolute bottom-0 right-0 w-5 h-5 bg-white dark:bg-gray-800 rounded-full border border-gray-300 dark:border-gray-600 flex items-center justify-center">

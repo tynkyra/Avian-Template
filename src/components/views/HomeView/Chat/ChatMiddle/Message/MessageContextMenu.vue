@@ -62,19 +62,43 @@ const handleUnpinMessage = async () => {
 // (event) select the reply message.
 const handleReplyToMessage = () => {
   props.handleCloseContextMenu();
-
   if (activeConversation) {
-    // get the active conversation index in the state store
     let activeConversationIndex = getConversationIndex(activeConversation.id);
-
     if (
       store.conversations &&
       activeConversationIndex !== undefined &&
       activeConversationIndex !== null
     ) {
-      // update the conversation in the state store
       store.conversations[activeConversationIndex].replyMessage = props.message;
     }
+  }
+};
+
+// (event) copy message text to clipboard
+const handleCopyMessage = async () => {
+  props.handleCloseContextMenu();
+  let text = '';
+  if (props.message.type === 'text') {
+    text = props.message.content;
+  } else if (props.message.type === 'recording') {
+    text = '[Voice message]';
+  } else if (props.message.type === 'image') {
+    text = '[Image]';
+  } else if (props.message.type === 'file') {
+    text = '[File]';
+  } else {
+    text = String(props.message.content ?? '');
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // fallback for older browsers
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
   }
 };
 
@@ -123,7 +147,7 @@ const handleDeleteMessage = async () => {
       class="dropdown-link dropdown-link-primary"
       role="menuitem"
       aria-label="copy this message"
-      @click="handleCloseContextMenu"
+      @click="handleCopyMessage"
     >
       <ClipboardDocumentIcon class="h-5 w-5 mr-3" />
       Copy

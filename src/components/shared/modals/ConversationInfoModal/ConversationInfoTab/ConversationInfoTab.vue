@@ -3,7 +3,7 @@ import type { IContact, IConversation } from "@src/types";
 
 import { computed, ref } from "vue";
 
-import { getAvatar, getName, getOddContact } from "@src/utils";
+import { getAvatar, getName, getOddContact, getInitials } from "@src/utils";
 
 import {
   ArrowLeftOnRectangleIcon,
@@ -94,12 +94,17 @@ const imageUrl = computed(() => {
             class="outline-none"
             aria-label="view avatar"
           >
-            <div
+            <div v-if="getAvatar(props.conversation)"
               :style="{
                 backgroundImage: `url(${getAvatar(props.conversation)})`,
               }"
               class="w-9.5 h-9.5 rounded-full bg-cover bg-center"
             ></div>
+            <div v-else
+              class="w-9.5 h-9.5 rounded-full bg-gray-400 dark:bg-gray-600 flex items-center justify-center"
+            >
+              <span class="text-sm font-semibold text-white">{{ getInitials(props.conversation) }}</span>
+            </div>
           </button>
         </div>
 
