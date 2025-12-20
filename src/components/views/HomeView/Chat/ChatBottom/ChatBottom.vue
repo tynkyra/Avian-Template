@@ -212,25 +212,25 @@ watch(value, (newValue) => {
 // send message function
 const handleSendMessage = async () => {
   console.log('handleSendMessage called', { value: value.value, activeConversation: activeConversation.value });
-  
   if (!value.value.trim()) {
     console.log('Message is empty, skipping');
     return;
   }
-  
   if (!activeConversation.value) {
     console.error('No active conversation');
     return;
   }
-  
   try {
-    console.log('Sending message:', value.value.trim());
-    await store.sendMessage(activeConversation.value.id, value.value.trim());
+    const replyTo = activeConversation.value.replyMessage?.id;
+    console.log('Sending message:', value.value.trim(), 'replyTo:', replyTo);
+    await store.sendMessage(activeConversation.value.id, value.value.trim(), 'text', replyTo);
     value.value = '';
     // Clear draft message
     const index = getConversationIndex(activeConversation.value.id);
     if (index !== undefined) {
       store.conversations[index].draftMessage = '';
+      // Clear reply message after sending
+      store.conversations[index].replyMessage = undefined;
     }
   } catch (error) {
     console.error('Failed to send message:', error);
@@ -334,12 +334,7 @@ const handleCloseAttachmentsModal = () => {
 <template>
   <div class="w-full xs:pb-16 md:pb-0">
     <!--selected reply display-->
-    <div
-      class="relative transition-all duration-200"
-      :class="{ 'pt-15': activeConversation?.replyMessage }"
-    >
-      <ReplyMessage />
-    </div>
+    <ReplyMessage />
 
     <div
       class="h-auto min-h-21 p-5 flex items-end"

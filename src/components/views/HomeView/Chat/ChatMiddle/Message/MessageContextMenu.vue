@@ -62,8 +62,8 @@ const handleUnpinMessage = async () => {
 // (event) select the reply message.
 const handleReplyToMessage = () => {
   props.handleCloseContextMenu();
-  if (activeConversation) {
-    let activeConversationIndex = getConversationIndex(activeConversation.id);
+  if (activeConversation?.value) {
+    let activeConversationIndex = getConversationIndex(activeConversation.value.id);
     if (
       store.conversations &&
       activeConversationIndex !== undefined &&

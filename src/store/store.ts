@@ -189,7 +189,9 @@ const useStore = defineStore("chat", () => {
       }
 
       // Get the avatar URL based on which avatar is active
-      const avatarUrl = activeAvatar.value === 'A' 
+
+      const avatarType = activeAvatar.value;
+      const avatarUrl = avatarType === 'A' 
         ? (conversation as any)?.avatarA 
         : (conversation as any)?.avatarB;
 
@@ -197,15 +199,20 @@ const useStore = defineStore("chat", () => {
       console.log('[Store] Conversation avatarA:', (conversation as any)?.avatarA);
       console.log('[Store] Conversation avatarB:', (conversation as any)?.avatarB);
 
+
       const message = await apiService.sendMessage({
         conversationId,
         content,
         type,
         replyTo,
-        avatarUrl // Send the actual avatar URL
+        avatarUrl, // Send the actual avatar URL
+        avatarType // Add avatarType to message
       });
 
       // Add message to local store
+
+      // Ensure avatarType is present in local message object
+      message.avatarType = avatarType;
       conversation.messages.push(message);
 
       // Move conversation to the top of the list

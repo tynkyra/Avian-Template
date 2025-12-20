@@ -38,6 +38,20 @@ const containsMedia = computed(() => {
   return false;
 });
 
+// Download file attachment
+const downloadAttachment = (attachment: IAttachment) => {
+  if (!attachment.url) return;
+  // Try to force download by opening in a new tab with 'download' attribute
+  const link = document.createElement('a');
+  link.href = attachment.url;
+  link.setAttribute('download', attachment.name || 'download');
+  link.setAttribute('target', '_blank');
+  link.setAttribute('rel', 'noopener');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 // number of videos attached to this message.
 const numberOfMedia = computed(() => {
   let counter = 0;
@@ -204,7 +218,7 @@ const isNumber = (
           <div class="flex">
             <!--download button / icons-->
             <button
-              c
+              @click="downloadAttachment(attachment)"
               class="w-8 h-8 mr-4 flex justify-center rounded-full outline-none items-center duration-200"
               :class="
                 props.self

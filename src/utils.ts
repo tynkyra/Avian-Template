@@ -1,3 +1,16 @@
+// Generate a consistent color from a string (e.g., name or email)
+export function stringToColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xff;
+    color += ('00' + value.toString(16)).slice(-2);
+  }
+  return color;
+}
 import useStore from "@src/store/store";
 import type {
   ICall,
@@ -229,12 +242,11 @@ export const getCallName = (
 };
 
 export const getMessageById = (
-  conversation: IConversation,
+  conversation?: IConversation,
   messageId?: number
 ) => {
-  if (messageId) {
-    return conversation.messages.find((message) => message.id === messageId);
-  }
+  if (!conversation || !messageId) return undefined;
+  return conversation.messages.find((message) => message.id === messageId);
 };
 
 /**

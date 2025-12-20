@@ -1,5 +1,69 @@
 <script setup lang="ts">
-import { inject, computed, ref, type Ref } from "vue";
+import { inject, computed, ref, type Ref, getCurrentInstance } from "vue";
+// --- Swipe-to-reply gesture logic ---
+const swipeData = ref({
+  startX: 0,
+  startY: 0,
+  deltaX: 0,
+  deltaY: 0,
+  swiping: false,
+});
+
+const swipeThreshold = 60; // px
+
+const handleSwipeStart = (e: TouchEvent | MouseEvent) => {
+  swipeData.value.swiping = true;
+  if (e instanceof TouchEvent) {
+    swipeData.value.startX = e.touches[0].clientX;
+    swipeData.value.startY = e.touches[0].clientY;
+  } else {
+    swipeData.value.startX = e.clientX;
+    swipeData.value.startY = e.clientY;
+    window.addEventListener('mousemove', handleSwipeMove);
+    window.addEventListener('mouseup', handleSwipeEnd);
+  }
+};
+
+const handleSwipeMove = (e: TouchEvent | MouseEvent) => {
+  if (!swipeData.value.swiping) return;
+  let clientX, clientY;
+  if (e instanceof TouchEvent) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  swipeData.value.deltaX = clientX - swipeData.value.startX;
+  swipeData.value.deltaY = clientY - swipeData.value.startY;
+};
+
+const handleSwipeEnd = (e: TouchEvent | MouseEvent) => {
+  if (!swipeData.value.swiping) return;
+  swipeData.value.swiping = false;
+  // Only horizontal swipe, ignore vertical
+  if (Math.abs(swipeData.value.deltaX) > Math.abs(swipeData.value.deltaY)) {
+    // Left message (not self): swipe right to reply
+    if (!props.self && swipeData.value.deltaX > swipeThreshold) {
+      triggerReply();
+    }
+    // Right message (self): swipe left to reply
+    if (props.self && swipeData.value.deltaX < -swipeThreshold) {
+      triggerReply();
+    }
+  }
+  swipeData.value.deltaX = 0;
+  swipeData.value.deltaY = 0;
+  window.removeEventListener('mousemove', handleSwipeMove);
+  window.removeEventListener('mouseup', handleSwipeEnd);
+};
+
+const triggerReply = () => {
+  // Set replyMessage in activeConversation
+  if (activeConversation?.value) {
+    activeConversation.value.replyMessage = props.message;
+  }
+};
 import type {
   IConversation,
   IMessage,
@@ -9,7 +73,7 @@ import type {
 
 import linkifyStr from "linkify-string";
 
-import { getFullName, getMessageById, formatTime } from "@src/utils";
+import { getFullName, getMessageById, stringToColor } from "@src/utils";
 
 import Attachments from "@src/components/views/HomeView/Chat/ChatMiddle/Message/Attachments.vue";
 import LinkPreview from "@src/components/views/HomeView/Chat/ChatMiddle/Message/LinkPreview.vue";
@@ -85,8 +149,15 @@ const hideAvatar = () => {
   return false;
 };
 
-// reply message
-const replyMessage = getMessageById(activeConversation, props.message.replyTo);
+// reply message with avatarType injected if missing
+let replyMessage = getMessageById(activeConversation?.value, props.message.replyTo);
+if (replyMessage && !replyMessage.avatarType && activeConversation?.value) {
+  if (replyMessage.sender?.avatar === activeConversation.value.avatarA) {
+    replyMessage = { ...replyMessage, avatarType: 'A' };
+  } else if (replyMessage.sender?.avatar === activeConversation.value.avatarB) {
+    replyMessage = { ...replyMessage, avatarType: 'B' };
+  }
+}
 
 // Format time as AM/PM in local timezone
 const formatTime = (dateString: string): string => {
@@ -132,22 +203,24 @@ const formatTime = (dateString: string): string => {
           :class="{
             'rounded-tl-xl ml-4 order-2 bg-indigo-50 dark:bg-gray-600':
               props.self && !props.selected,
-
             'rounded-tr-xl mr-4 bg-gray-50 dark:bg-gray-600':
               !props.self && !props.selected,
-
             'rounded-tl-xl ml-4 order-2 bg-indigo-200 dark:bg-indigo-500':
               props.self && props.selected,
-
             'rounded-tr-xl mr-4 bg-indigo-200 dark:bg-indigo-500':
               !props.self && props.selected,
           }"
+          @touchstart="handleSwipeStart"
+          @touchmove="handleSwipeMove"
+          @touchend="handleSwipeEnd"
+          @mousedown="handleSwipeStart"
         >
           <!--reply to-->
           <MessagePreview
             v-if="replyMessage"
             :message="replyMessage"
             :self="props.self"
+            :color="replyMessage && replyMessage.avatarType === 'A' ? '#2563eb' : replyMessage && replyMessage.avatarType === 'B' ? '#facc15' : '#888888'"
             class="mb-5 px-3"
           />
 
