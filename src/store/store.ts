@@ -1,18 +1,19 @@
 import { defineStore } from "pinia";
 import type { Ref } from "vue";
 import { computed, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import { apiService } from "@src/services/api";
 import { socketService } from "@src/services/socket";
+
 import type {
   IConversation,
-  IContactGroup,
   IUser,
   INotification,
   ICall,
   ISettings,
   IEmoji,
-  IMessage,
+  IMessage
 } from "@src/types";
 
 const useStore = defineStore("chat", () => {
@@ -64,50 +65,6 @@ const useStore = defineStore("chat", () => {
     lastName: 'A',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80',
     email: 'avatarA@example.com',
-    lastSeen: new Date()
-  });
-  const avatarB = ref({
-    id: 2,
-    firstName: 'Avatar',
-    lastName: 'B', 
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=387&q=80',
-    email: 'avatarB@example.com',
-    lastSeen: new Date()
-  });
-
-  // contacts grouped alphabetically.
-  const contactGroups: Ref<IContactGroup[] | undefined> = computed(() => {
-    if (user.value) {
-      let sortedContacts = [...user.value.contacts];
-
-      sortedContacts.sort();
-
-      let groups: IContactGroup[] = [];
-      let currentLetter: string = "";
-      let groupNames: string[] = [];
-
-      // create an array of letter for every different sort level.
-      for (let contact of sortedContacts) {
-        // if the first letter is different create a new group.
-        if (contact.firstName[0].toUpperCase() !== currentLetter) {
-          currentLetter = contact.firstName[0].toUpperCase();
-          groupNames.push(currentLetter);
-        }
-      }
-
-      // create an array that groups contact names based on the first letter;
-      for (let groupName of groupNames) {
-        let group: IContactGroup = { letter: groupName, contacts: [] };
-        for (let contact of sortedContacts) {
-          if (contact.firstName[0].toUpperCase() === groupName) {
-            group.contacts.push(contact);
-          }
-        }
-        groups.push(group);
-      }
-
-      return groups;
-    }
   });
 
   const getStatus = computed(() => status);
@@ -173,6 +130,8 @@ const useStore = defineStore("chat", () => {
       // New conversations without messages will appear at the bottom (NULL last_message_time)
       conversations.value = data;
       status.value = "success";
+
+      // (Route-based message loading removed; handled in Chat.vue for reactivity)
     } catch (error) {
       console.error('Failed to load conversations:', error);
       status.value = "error";
@@ -185,7 +144,6 @@ const useStore = defineStore("chat", () => {
       const conversation = conversations.value.find(c => c.id === conversationId);
       if (!conversation) {
         console.error('Cannot send message: Conversation not found for id', conversationId);
-        throw new Error('Conversation not found. Please try again after the chat appears in your list.');
       }
 
       // Get the avatar URL based on which avatar is active
@@ -257,7 +215,6 @@ const useStore = defineStore("chat", () => {
       // Add message to local store
       if (conversation) {
         conversation.messages.push(message);
-        
         // Move conversation to the top of the list
         const index = conversations.value.indexOf(conversation);
         if (index > 0) {
@@ -265,6 +222,20 @@ const useStore = defineStore("chat", () => {
           updated.splice(index, 1);
           updated.unshift(conversation);
           conversations.value = updated;
+        }
+        // Immediately reload messages for this conversation to ensure attachments are up to date
+        try {
+          const response = await apiService.getMessages(conversationId);
+          conversation.messages = response.messages;
+          if (response.pinnedMessageIds && response.pinnedMessageIds.length > 0) {
+            conversation.pinnedMessages = response.messages
+              .filter(m => response.pinnedMessageIds.includes(m.id))
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          } else {
+            conversation.pinnedMessages = [];
+          }
+        } catch (err) {
+          console.error('[Store] Failed to reload messages after sending attachment:', err);
         }
       }
 
@@ -627,7 +598,6 @@ const useStore = defineStore("chat", () => {
     // data refs
     user,
     conversations,
-    contactGroups,
     notifications,
     archivedConversations,
     calls,
@@ -652,7 +622,7 @@ const useStore = defineStore("chat", () => {
     sendMessage,
     sendAttachments,
     sendRecording,
-    addContact,
+    // addContact removed (contacts feature removed)
     createConversation,
     updateConversation,
     archiveConversation,
@@ -667,7 +637,7 @@ const useStore = defineStore("chat", () => {
     // Avatar management
     activeAvatar,
     avatarA,
-    avatarB,
+    // avatarB removed (contacts feature removed)
     toggleAvatar: () => {
       activeAvatar.value = activeAvatar.value === 'A' ? 'B' : 'A';
     },

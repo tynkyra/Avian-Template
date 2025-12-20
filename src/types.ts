@@ -6,7 +6,7 @@ export interface IUser {
   avatar: string;
   token: string;
   lastSeen: Date;
-  contacts: IContact[];
+  // contacts removed
 }
 
 export interface IContact {
@@ -54,6 +54,7 @@ export interface IMessage {
   previewData?: IPreviewData;
   attachments?: IAttachment[];
   state: string;
+  avatarType?: 'A' | 'B';
 }
 
 export interface IConversation {
@@ -65,7 +66,7 @@ export interface IConversation {
   avatarA?: string;
   avatarB?: string;
   admins?: number[];
-  contacts: IContact[];
+  // contacts removed
   messages: IMessage[];
   pinnedMessages?: IMessage[];
   pinnedMessage?: IMessage;
@@ -77,7 +78,7 @@ export interface IConversation {
 
 export interface IContactGroup {
   letter: string;
-  contacts: IContact[];
+  // contacts removed
 }
 
 export interface INotification {

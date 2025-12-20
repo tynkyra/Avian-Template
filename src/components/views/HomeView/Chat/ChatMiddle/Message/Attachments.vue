@@ -8,10 +8,16 @@ import { ArrowDownTrayIcon } from "@heroicons/vue/24/outline";
 import { PlayIcon } from "@heroicons/vue/24/solid";
 import Carousel from "@src/components/ui/data-display/Carousel/Carousel.vue";
 
+
 const props = defineProps<{
   message: IMessage;
   self?: boolean;
 }>();
+
+if (import.meta.env.DEV) {
+  // Debug: log attachments for this message
+  console.log('[Attachments.vue] message.id:', props.message.id, 'attachments:', props.message.attachments);
+}
 
 const openCarousel: Ref<boolean> = ref(false);
 

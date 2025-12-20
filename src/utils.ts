@@ -57,19 +57,7 @@ export const getInitials = (conversation: IConversation) => {
  * @param conversation
  * @returns A contact object representing the other user in the conversation.
  */
-export const getOddContact = (conversation: IConversation) => {
-  const store = useStore();
-
-  let oddContact;
-
-  for (let contact of conversation.contacts) {
-    if (store.user && contact.id !== store.user.id) {
-      oddContact = contact;
-    }
-  }
-
-  return oddContact;
-};
+// contacts feature removed
 
 /**
  * get avatar based on conversation type.
@@ -194,7 +182,7 @@ export const getConversationIndex = (
  * takes a call object and returns all the members
  * of the call except the authenticated user.
  * @param call
- * @returns An array containing the contacts participating in the call
+ * @returns (contacts feature removed)
  */
 export const getOtherMembers = (call: ICall) => {
   const store = useStore();

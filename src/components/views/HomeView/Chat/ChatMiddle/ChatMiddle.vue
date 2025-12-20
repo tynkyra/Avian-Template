@@ -29,7 +29,10 @@ watch(() => activeConversation.value, (newVal) => {
   console.log('[ChatMiddle.vue] Condition check - has messages:', !!activeConversation.value?.messages);
   console.log('[ChatMiddle.vue] Full condition:', store.status !== 'loading' && !!activeConversation.value?.messages);
   if (newVal?.messages) {
-    console.log('[ChatMiddle.vue] First 3 messages:', newVal.messages.slice(0, 3));
+    // Print first 3 messages and their attachments
+    newVal.messages.slice(0, 3).forEach((msg, idx) => {
+      console.log(`[ChatMiddle.vue] Message #${idx} id=${msg.id} attachments=`, msg.attachments);
+    });
   }
 }, { deep: true, immediate: true });
 

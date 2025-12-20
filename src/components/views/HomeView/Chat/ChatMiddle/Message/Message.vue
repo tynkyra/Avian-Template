@@ -1,18 +1,24 @@
 <script setup lang="ts">
 import { inject, computed, ref, type Ref, getCurrentInstance } from "vue";
 // --- Swipe-to-reply gesture logic ---
+
 const swipeData = ref({
   startX: 0,
   startY: 0,
   deltaX: 0,
   deltaY: 0,
   swiping: false,
+  animating: false,
 });
 
 const swipeThreshold = 60; // px
+const maxSwipe = 120; // px, max distance allowed
+
+const ease = (value: number, factor = 0.2) => value * factor;
 
 const handleSwipeStart = (e: TouchEvent | MouseEvent) => {
   swipeData.value.swiping = true;
+  swipeData.value.animating = false;
   if (e instanceof TouchEvent) {
     swipeData.value.startX = e.touches[0].clientX;
     swipeData.value.startY = e.touches[0].clientY;
@@ -34,8 +40,26 @@ const handleSwipeMove = (e: TouchEvent | MouseEvent) => {
     clientX = e.clientX;
     clientY = e.clientY;
   }
-  swipeData.value.deltaX = clientX - swipeData.value.startX;
+  let rawDeltaX = clientX - swipeData.value.startX;
+  // Clamp to maxSwipe
+  if (rawDeltaX > maxSwipe) rawDeltaX = maxSwipe;
+  if (rawDeltaX < -maxSwipe) rawDeltaX = -maxSwipe;
+  swipeData.value.deltaX = rawDeltaX;
   swipeData.value.deltaY = clientY - swipeData.value.startY;
+};
+
+const animateSnapBack = () => {
+  swipeData.value.animating = true;
+  const animation = () => {
+    if (Math.abs(swipeData.value.deltaX) < 1) {
+      swipeData.value.deltaX = 0;
+      swipeData.value.animating = false;
+      return;
+    }
+    swipeData.value.deltaX -= ease(swipeData.value.deltaX);
+    requestAnimationFrame(animation);
+  };
+  animation();
 };
 
 const handleSwipeEnd = (e: TouchEvent | MouseEvent) => {
@@ -52,7 +76,8 @@ const handleSwipeEnd = (e: TouchEvent | MouseEvent) => {
       triggerReply();
     }
   }
-  swipeData.value.deltaX = 0;
+  // Animate snap-back
+  animateSnapBack();
   swipeData.value.deltaY = 0;
   window.removeEventListener('mousemove', handleSwipeMove);
   window.removeEventListener('mouseup', handleSwipeEnd);
@@ -150,12 +175,13 @@ const hideAvatar = () => {
 };
 
 // reply message with avatarType injected if missing
-let replyMessage = getMessageById(activeConversation?.value, props.message.replyTo);
+// import type { IMessage } from "@src/types"; (duplicate removed)
+let replyMessage = getMessageById(activeConversation?.value, props.message.replyTo) as IMessage | undefined;
 if (replyMessage && !replyMessage.avatarType && activeConversation?.value) {
   if (replyMessage.sender?.avatar === activeConversation.value.avatarA) {
-    replyMessage = { ...replyMessage, avatarType: 'A' };
+    replyMessage = { ...replyMessage, avatarType: 'A' } as IMessage;
   } else if (replyMessage.sender?.avatar === activeConversation.value.avatarB) {
-    replyMessage = { ...replyMessage, avatarType: 'B' };
+    replyMessage = { ...replyMessage, avatarType: 'B' } as IMessage;
   }
 }
 
@@ -210,6 +236,11 @@ const formatTime = (dateString: string): string => {
             'rounded-tr-xl mr-4 bg-indigo-200 dark:bg-indigo-500':
               !props.self && props.selected,
           }"
+          :style="
+            swipeData.swiping || swipeData.animating
+              ? `transform: translateX(${swipeData.deltaX}px); transition: ${swipeData.animating ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'};`
+              : ''
+          "
           @touchstart="handleSwipeStart"
           @touchmove="handleSwipeMove"
           @touchend="handleSwipeEnd"
@@ -224,16 +255,17 @@ const formatTime = (dateString: string): string => {
             class="mb-5 px-3"
           />
 
-          <!--attachments-->
+
+          <!-- Always render attachments if present -->
           <Attachments
-            v-if="(props.message.attachments as [])?.length > 0"
+            v-if="Array.isArray(props.message.attachments) && props.message.attachments.length > 0"
             :message="props.message"
             :self="props.self"
           />
 
-          <!--caption (content) for attachment messages-->
+          <!-- Show caption/content for messages with attachments (if content exists) -->
           <p
-            v-if="props.message.content && props.message.type !== 'recording' && props.message.attachments && props.message.attachments.length > 0"
+            v-if="props.message.content && props.message.attachments && props.message.attachments.length > 0 && props.message.type !== 'recording'"
             class="body-2 outline-none text-black opacity-100 dark:text-white dark:opacity-70 mt-4"
             v-html="
               linkifyStr(props.message.content as string, {
@@ -249,9 +281,9 @@ const formatTime = (dateString: string): string => {
             tabindex="0"
           ></p>
 
-          <!--content (for regular text messages without attachments)-->
+          <!-- Show content for regular text messages without attachments -->
           <p
-            v-else-if="props.message.content && props.message.type !== 'recording'"
+            v-else-if="props.message.content && (!props.message.attachments || props.message.attachments.length === 0) && props.message.type !== 'recording'"
             class="body-2 outline-none text-black opacity-100 dark:text-white dark:opacity-70"
             v-html="
               linkifyStr(props.message.content as string, {
@@ -297,7 +329,16 @@ const formatTime = (dateString: string): string => {
         </div>
 
         <!--time-->
-        <div :class="props.self ? ['ml-4', 'order-1'] : ['mr-4']">
+
+        <!--time (moves with bubble)-->
+        <div
+          :class="props.self ? ['ml-4', 'order-1'] : ['mr-4']"
+          :style="
+            swipeData.swiping || swipeData.animating
+              ? `transform: translateX(${swipeData.deltaX}px); transition: ${swipeData.animating ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'};`
+              : ''
+          "
+        >
           <p class="body-1 text-black/70 dark:text-white/70 whitespace-nowrap">
             {{ formatTime(props.message.date) }}
           </p>

@@ -113,3 +113,4 @@ watch(searchText, () => {
     />
   </div>
 </template>
+<!-- Deleted: Contacts.vue (contacts feature removed) -->

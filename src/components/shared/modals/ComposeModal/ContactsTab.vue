@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import useStore from "@src/store/store";
 
-import NoContacts from "@src/components/states/empty-states/NoContacts.vue";
+// import NoContacts removed (contacts feature removed)
 import Circle2Lines from "@src/components/states/loading-states/Circle2Lines.vue";
 import SearchInput from "@src/components/ui/inputs/SearchInput.vue";
 import ContactItem from "@src/components/shared/blocks/ContactItem.vue";
@@ -36,7 +36,7 @@ const store = useStore();
         :contact="contact"
       />
 
-      <NoContacts vertical v-else />
+      <!-- NoContacts removed (contacts feature removed) -->
     </ScrollBox>
   </div>
 </template>

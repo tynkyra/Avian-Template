@@ -27,7 +27,7 @@ const handleRemoveReplyMessage = () => {
       activeConversationIndex !== null
     ) {
       // Use $patch to ensure reactivity
-      store.$patch((state) => {
+      store.$patch((state: any) => {
         state.conversations[activeConversationIndex] = {
           ...state.conversations[activeConversationIndex],
           replyMessage: undefined
@@ -36,17 +36,18 @@ const handleRemoveReplyMessage = () => {
     }
   }
 };
+import type { IMessage } from "@src/types";
 const getReplyMessageWithAvatarType = computed(() => {
-  const msg = activeConversation?.value?.replyMessage;
+  const msg = activeConversation?.value?.replyMessage as IMessage | undefined;
   if (!msg) return undefined;
   if (msg.avatarType) return msg;
   // Infer avatarType by comparing avatar url
   if (msg.sender?.avatar === activeConversation?.value?.avatarA) {
-    return { ...msg, avatarType: 'A' };
+    return { ...msg, avatarType: 'A' } as IMessage;
   } else if (msg.sender?.avatar === activeConversation?.value?.avatarB) {
-    return { ...msg, avatarType: 'B' };
+    return { ...msg, avatarType: 'B' } as IMessage;
   }
-  return { ...msg, avatarType: undefined };
+  return { ...msg, avatarType: undefined } as IMessage;
 });
 </script>
 

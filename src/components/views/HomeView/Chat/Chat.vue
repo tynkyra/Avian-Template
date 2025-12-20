@@ -2,7 +2,7 @@
 import type { Ref } from "vue";
 
 import useStore from "@src/store/store";
-import { computed, provide, ref, watch, onMounted } from "vue";
+import { computed, provide, ref, watch, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { apiService } from "@src/services/api";
 
@@ -15,14 +15,19 @@ import ChatTop from "@src/components/views/HomeView/Chat/ChatTop/ChatTop.vue";
 const store = useStore();
 const route = useRoute();
 
+
+onMounted(async () => {
+  if (store.conversations.length === 0) {
+    await store.loadConversations();
+  }
+});
+
 // search the selected conversation using activeConversationId.
 const activeConversation = computed(() => {
   const activeConversationId = route.params.id ? Number(route.params.id) : undefined;
-  
   let activeConversation = store.conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
-
   if (activeConversation) {
     console.log('[Chat.vue computed] Found conversation:', activeConversation.name, 'messages:', activeConversation.messages?.length);
     return activeConversation;
@@ -54,44 +59,36 @@ const shouldShowChat = computed(() => {
   return hasRouteId && hasConversation;
 });
 
-// Load messages when conversation changes
-watch(() => route.params.id, async (newId) => {
-  if (newId) {
-    const conversationId = Number(newId);
-    console.log('[Chat.vue] Route changed to conversation:', conversationId);
-    
-    const conversation = store.conversations.find(c => c.id === conversationId) || 
-                        store.archivedConversations.find(c => c.id === conversationId);
-    
-    console.log('[Chat.vue] Found conversation:', conversation?.name, 'Current messages:', conversation?.messages?.length);
-    
-    if (conversation) {
-      // Always load messages to ensure we have the latest data
-      try {
-        console.log('[Chat.vue] Loading messages for conversation:', conversationId);
-        const response = await apiService.getMessages(conversationId);
-        console.log('[Chat.vue] Loaded messages:', response.messages.length, 'pinnedIds:', response.pinnedMessageIds);
-        conversation.messages = response.messages;
-        
-        // Populate pinned messages from pinnedMessageIds
-        if (response.pinnedMessageIds && response.pinnedMessageIds.length > 0) {
-          conversation.pinnedMessages = response.messages
-            .filter(m => response.pinnedMessageIds.includes(m.id))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        } else {
-          conversation.pinnedMessages = [];
-        }
-        
-        console.log('[Chat.vue] Pinned messages:', conversation.pinnedMessages?.length || 0);
-        console.log('[Chat.vue] After assignment, conversation.messages:', conversation.messages?.length);
-      } catch (error) {
-        console.error('[Chat.vue] Failed to load messages:', error);
+
+// Watch activeConversation and fetch messages/attachments when it changes
+watch(
+  activeConversation,
+  async (conversation) => {
+    console.log('[Chat.vue] Watcher triggered. Active conversation:', conversation);
+    if (!conversation) return;
+    try {
+      const response = await apiService.getMessages(conversation.id);
+      // Debug: print first and last message from API response
+      if (response.messages && response.messages.length > 0) {
+        console.log('[Chat.vue] First message from API:', response.messages[0]);
+        console.log('[Chat.vue] Last message from API:', response.messages[response.messages.length - 1]);
+      } else {
+        console.log('[Chat.vue] No messages returned from API');
       }
-    } else {
-      console.log('[Chat.vue] No conversation found for ID:', conversationId);
+      conversation.messages = response.messages;
+      if (response.pinnedMessageIds && response.pinnedMessageIds.length > 0) {
+        conversation.pinnedMessages = response.messages
+          .filter(m => response.pinnedMessageIds.includes(m.id))
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } else {
+        conversation.pinnedMessages = [];
+      }
+    } catch (error) {
+      console.error('[Chat.vue] Failed to load messages:', error);
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true }
+);
 
 // determines whether select mode is enabled.
 const selectMode = ref(false);

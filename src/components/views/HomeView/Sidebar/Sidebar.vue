@@ -5,7 +5,6 @@ import useStore from "@src/store/store";
 
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
 import Calls from "@src/components/views/HomeView/Sidebar/Calls/Calls.vue";
-import Contacts from "@src/components/views/HomeView/Sidebar/Contacts/Contacts.vue";
 import Conversations from "@src/components/views/HomeView/Sidebar/Conversations/Conversations.vue";
 import Notifications from "@src/components/views/HomeView/Sidebar/Notifications/Notifications.vue";
 import Settings from "@src/components/views/HomeView/Sidebar/Settings/Settings.vue";
@@ -16,8 +15,6 @@ const store = useStore();
 const ActiveComponent = computed((): any => {
   if (store.activeSidebarComponent === "messages") {
     return Conversations;
-  } else if (store.activeSidebarComponent === "contacts") {
-    return Contacts;
   } else if (store.activeSidebarComponent === "notifications") {
     return Notifications;
   } else if (store.activeSidebarComponent === "phone") {

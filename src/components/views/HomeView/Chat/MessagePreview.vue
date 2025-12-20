@@ -16,6 +16,8 @@ const store = useStore();
 if (import.meta.env.DEV) {
   // Debug: log the color prop to verify value
   console.log('[MessagePreview] color prop:', props.color, 'sender:', props.message?.sender?.email || getFullName(props.message?.sender));
+  // Debug: log the full message object
+  console.log('[MessagePreview] message:', props.message);
 }
 </script>
 
@@ -39,20 +41,20 @@ if (import.meta.env.DEV) {
       }}
     </p>
 
+    <!--attachments title and caption (always show if attachments exist)-->
+    <p
+      v-if="Array.isArray(props.message.attachments) && props.message.attachments.length > 0"
+      class="body-2 text-black"
+    >
+      {{ props.message.attachments[0].name }}<span v-if="props.message.content"> — {{ shorten(props.message, 60) }}</span>
+    </p>
+
     <!--content-->
     <p
-      v-if="props.message.type !== 'recording' && props.message.content"
+      v-else-if="props.message.type !== 'recording' && props.message.content"
       class="body-2 text-black"
     >
       {{ shorten(props.message, 60) }}
-    </p>
-
-    <!--attachments title-->
-    <p
-      v-else-if="hasAttachments(props.message)"
-      class="body-2 text-black"
-    >
-      {{ (props.message?.attachments as IAttachment[])[0].name }}
     </p>
 
     <!--recording title-->

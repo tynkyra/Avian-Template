@@ -80,18 +80,7 @@ class ApiService {
     return this.request<IUser[]>(`/users/search?q=${encodeURIComponent(query)}`);
   }
 
-  async addContact(contactId: number): Promise<void> {
-    await this.request('/users/contacts', {
-      method: 'POST',
-      body: JSON.stringify({ contactId }),
-    });
-  }
-
-  async removeContact(contactId: number): Promise<void> {
-    await this.request(`/users/contacts/${contactId}`, {
-      method: 'DELETE',
-    });
-  }
+  // contacts feature removed
 
   // Conversation methods
   async getConversations(): Promise<IConversation[]> {
