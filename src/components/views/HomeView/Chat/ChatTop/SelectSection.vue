@@ -8,6 +8,7 @@ const props = defineProps<{
   handleCloseSelect: () => void;
   handleDeselectAll: () => void;
   handleSelectAll: () => void;
+  handleDeleteSelected: () => void;
 }>();
 
 // (event) toggle the select all checkbox
@@ -35,7 +36,7 @@ const handleCheck = () => {
       </label>
     </div>
     <div class="flex items-center">
-      <Button class="ghost-danger ghost-text mr-3"> Delete </Button>
+      <Button class="ghost-danger ghost-text mr-3" @click="props.handleDeleteSelected"> Delete </Button>
       <Button class="ghost-primary ghost-text" @click="props.handleCloseSelect">
         Cancel
       </Button>

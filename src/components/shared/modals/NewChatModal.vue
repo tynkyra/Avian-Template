@@ -329,7 +329,7 @@ const createNewAvatar = () => {
 <template>
   <Modal :open="props.open" :close-modal="handleCloseModal">
     <template v-slot:content>
-      <div class="w-[28rem] bg-white dark:bg-gray-800 rounded-lg p-6">
+      <div class="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-lg bg-white dark:bg-gray-800 rounded-lg p-6 mx-auto">
         <!--header-->
         <div class="flex justify-between items-center mb-6">
           <div class="flex items-center gap-3">
@@ -531,7 +531,7 @@ const createNewAvatar = () => {
   <!-- Create Avatar Modal -->
   <Modal :open="showCreateAvatarModal" :close-modal="closeCreateAvatarModal">
     <template v-slot:content>
-      <div class="w-96 bg-white dark:bg-gray-800 rounded-lg p-6">
+      <div class="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl bg-white dark:bg-gray-800 rounded-lg p-6 mx-auto">
         <div class="flex justify-between items-center mb-6">
           <h2 class="heading-1 text-black/70 dark:text-white/70">Create New Avatar</h2>
           <IconButton

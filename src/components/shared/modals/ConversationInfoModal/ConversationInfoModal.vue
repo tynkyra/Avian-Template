@@ -63,8 +63,9 @@ const handleChangeActiveTab = (event: {
       <div class="overflow-x-hidden">
         <div 
           :class="[
-            'bg-white dark:bg-gray-800 rounded py-6',
-            activePageName === 'edit-group' ? 'w-[28rem] max-h-[90vh] overflow-y-auto' : 'w-75'
+            'bg-white dark:bg-gray-800 rounded py-6 mx-auto w-full min-w-[12rem] sm:min-w-[16rem] md:min-w-[20rem]',
+            'max-w-7xl w-full',
+            activePageName === 'edit-group' ? 'max-h-[90vh] overflow-y-auto' : ''
           ]"
         >
           <!--content-->

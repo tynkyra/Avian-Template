@@ -31,7 +31,7 @@ const props = defineProps<{
       </p>
 
       <p class="body-2 text-black/70 dark:text-white/70 flex">
-        click pencil icon to create one.
+        Create a new chat to get started!
       </p>
     </div>
   </div>

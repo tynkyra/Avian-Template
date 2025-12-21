@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+
 import authRoutes from './routes/auth.js';
 import messageRoutes from './routes/messages.js';
 import conversationRoutes from './routes/conversations.js';
@@ -10,6 +11,8 @@ import userRoutes from './routes/users.js';
 import { initDatabase } from './database/init.js';
 import { authenticateToken } from './middleware/auth.js';
 import recordingsRoutes from './routes/recordings.js';
+import verifyPasswordRoutes from './routes/verify-password.js';
+import changePasswordRoutes from './routes/change-password.js';
 
 dotenv.config();
 
@@ -33,7 +36,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   optionsSuccessStatus: 200
 }));
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 // Serve avatars directory for profile images
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -57,6 +61,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/messages', authenticateToken, messageRoutes);
 app.use('/api/conversations', authenticateToken, conversationRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
+app.use('/api/users/verify-password', verifyPasswordRoutes);
+app.use('/api/users/change-password', changePasswordRoutes);
 
 // Socket.io for real-time messaging
 io.use((socket, next) => {

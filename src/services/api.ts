@@ -19,8 +19,17 @@ class ApiService {
       ...options,
     };
 
-    const response = await fetch(`${API_BASE_URL}${url}`, config);
+    // Debug: Log token and request info for verify-password endpoint
+    if (url.includes('/verify-password')) {
+      // eslint-disable-next-line no-console
+      console.log('[ApiService] verify-password request token:', this.token);
+      // eslint-disable-next-line no-console
+      console.log('[ApiService] verify-password request headers:', config.headers);
+      // eslint-disable-next-line no-console
+      console.log('[ApiService] verify-password request body:', options.body);
+    }
 
+    const response = await fetch(`${API_BASE_URL}${url}`, config);
     if (!response.ok) {
       let errorBody: any = null;
       try {
@@ -36,6 +45,22 @@ class ApiService {
     }
 
     return response.json();
+  }
+
+  // Change password for current user
+  async changePassword(oldPassword: string, newPassword: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>('/users/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ oldPassword, newPassword }),
+    });
+  }
+
+  // Verify password for current user
+  async verifyPassword(password: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>('/users/verify-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
   }
 
   // Auth methods

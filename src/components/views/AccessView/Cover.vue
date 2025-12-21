@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import cloudPatternPath from "@src/assets/images/clouds.png";
+import cloudPatternPath from "@src/assets/images/pokemon.jpg";
 import blurPath from "@src/assets/images/blur.png";
 </script>
 
@@ -12,16 +12,15 @@ import blurPath from "@src/assets/images/blur.png";
       :style="{ 'background-image': `url(${cloudPatternPath})` }"
     >
       <div
-        class="px-9 py-15 rounded-[.3125rem] bg-cover bg-no-repeat"
-        :style="{ 'background-image': `url(${blurPath})` }"
+        class="px-9 py-15 rounded-[.3125rem] translucent-box"
       >
         <p class="display mb-5 text-white">
-          Blazingly fast messaging platform for the
-          <span class="text-gradient">web.</span>
+          
+          <span class="text-gradient">Merry Christmas, Fin!</span>
         </p>
         <p class="body-3 text-white">
-          Avian saves all the data in user’s devices and uses a cryptographic
-          protocols to sync the data across multiple browsers and devices.
+          You chose to work on yourself again today. I'm so proud of you! 
+          Keep going darling, I'm with you every step of the way.
         </p>
       </div>
     </div>
@@ -35,5 +34,12 @@ import blurPath from "@src/assets/images/blur.png";
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+/* Add translucent box style */
+.translucent-box {
+  background: rgba(0, 0, 0, 0.489);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 </style>

@@ -188,10 +188,6 @@ const imageUrl = computed(() => {
         />
       </div>
 
-      <!--(both) notifications-->
-      <div class="px-5 flex items-center">
-        <IconAndText :icon="BellIcon" title="notifications" switch />
-      </div>
 
       <!--(both) shared media-->
       <div class="px-5 pt-5 flex items-center">

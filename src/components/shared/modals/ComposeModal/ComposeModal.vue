@@ -40,7 +40,7 @@ const activeTab = computed(() => {
 <template>
   <Modal :open="props.open" :close-modal="props.closeModal">
     <template v-slot:content>
-      <div class="w-75 bg-white dark:bg-gray-800 rounded pt-6">
+      <div class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl bg-white dark:bg-gray-800 rounded pt-6 mx-auto">
         <!--header-->
         <div class="flex justify-between items-center mb-6 px-5">
           <p

@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
           const token = jwt.sign(
             { userId: this.lastID, email },
             process.env.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '365d' }
           );
 
           res.status(201).json({
@@ -104,7 +104,7 @@ router.post('/login', (req, res) => {
         const token = jwt.sign(
           { userId: user.id, email: user.email },
           process.env.JWT_SECRET,
-          { expiresIn: '7d' }
+          { expiresIn: '365d' }
         );
 
         res.json({

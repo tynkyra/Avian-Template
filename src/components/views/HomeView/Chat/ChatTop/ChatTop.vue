@@ -17,6 +17,7 @@ const props = defineProps<{
   handleSelectAll: () => void;
   handleDeselectAll: () => void;
   handleCloseSelect: () => void;
+  handleDeleteSelected: () => void;
 }>();
 
 const store = useStore();
@@ -60,8 +61,9 @@ const handleCloseVoiceCallModal = (endCall: boolean) => {
         :select-mode="props.selectMode"
         :select-all="props.selectAll"
         :handle-close-select="props.handleCloseSelect"
-        :handle-select-all="props.handleSelectAll"
         :handle-deselect-all="props.handleDeselectAll"
+        :handle-select-all="props.handleSelectAll"
+        :handle-delete-selected="props.handleDeleteSelected"
       />
       <ConversationInfoSection
         v-else

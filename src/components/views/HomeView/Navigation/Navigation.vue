@@ -33,6 +33,7 @@ const handleActiveSidebarComponentChange = (value: string) => {
   <div
     class="xs:w-full md:w-11 md:h-full md:py-7 xs:py-5 px-5 flex xs:flex-row md:flex-col items-center transition-all duration-500 bg-white dark:bg-gray-800"
   >
+
     <!--logo-->
     <Logo />
 

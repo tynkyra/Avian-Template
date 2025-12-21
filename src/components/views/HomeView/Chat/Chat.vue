@@ -6,11 +6,13 @@ import { computed, provide, ref, watch, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { apiService } from "@src/services/api";
 
+
 import NoChatSelected from "@src/components/states/empty-states/NoChatSelected.vue";
 import Spinner from "@src/components/states/loading-states/Spinner.vue";
 import ChatBottom from "@src/components/views/HomeView/Chat/ChatBottom/ChatBottom.vue";
 import ChatMiddle from "@src/components/views/HomeView/Chat/ChatMiddle/ChatMiddle.vue";
 import ChatTop from "@src/components/views/HomeView/Chat/ChatTop/ChatTop.vue";
+import ConfirmModal from "@src/components/shared/modals/ConfirmModal.vue";
 
 const store = useStore();
 const route = useRoute();
@@ -144,11 +146,65 @@ const handleDeselectAll = () => {
   selectedMessages.value = [];
 };
 
-// (event handle close Select)
-const handleCloseSelect = () => {
-  selectMode.value = false;
-  selectAll.value = false;
-  selectedMessages.value = [];
+
+// In-app confirmation modal state and delete logic
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<'single' | 'multiple'>('single');
+const pendingDeleteMessageId = ref<number | null>(null);
+
+// (event) open delete confirmation for a single message
+const handleRequestDeleteMessage = (messageId: number) => {
+  console.log('[Chat.vue] handleRequestDeleteMessage called for', messageId);
+  deleteTarget.value = 'single';
+  pendingDeleteMessageId.value = messageId;
+  showDeleteConfirm.value = true;
+  console.log('[Chat.vue] showDeleteConfirm set to', showDeleteConfirm.value);
+};
+
+// (event) open delete confirmation for selected messages
+const handleRequestDeleteSelected = () => {
+  deleteTarget.value = 'multiple';
+  showDeleteConfirm.value = true;
+};
+
+// (event) confirm deletion
+const handleConfirmDelete = async () => {
+  console.log('[Chat.vue] handleConfirmDelete called. deleteTarget:', deleteTarget.value, 'pendingDeleteMessageId:', pendingDeleteMessageId.value);
+  if (deleteTarget.value === 'single' && pendingDeleteMessageId.value && activeConversation.value) {
+    await store.deleteMessage(activeConversation.value.id, pendingDeleteMessageId.value);
+    console.log('[Chat.vue] store.deleteMessage completed for', pendingDeleteMessageId.value);
+    pendingDeleteMessageId.value = null;
+  } else if (deleteTarget.value === 'multiple' && activeConversation.value) {
+    // Copy IDs to avoid mutation issues
+    const idsToDelete = [...selectedMessages.value];
+    for (const messageId of idsToDelete) {
+      await store.deleteMessage(activeConversation.value.id, messageId);
+      console.log('[Chat.vue] store.deleteMessage completed for', messageId);
+    }
+    // Clear selection and exit select mode
+    selectedMessages.value = [];
+    selectMode.value = false;
+    selectAll.value = false;
+    // Optionally, re-fetch messages for the conversation
+    if (activeConversation.value) {
+      try {
+        const response = await apiService.getMessages(activeConversation.value.id);
+        activeConversation.value.messages = response.messages;
+      } catch (error) {
+        console.error('[Chat.vue] Failed to refresh messages after delete:', error);
+      }
+    }
+  }
+  showDeleteConfirm.value = false;
+  console.log('[Chat.vue] showDeleteConfirm set to', showDeleteConfirm.value);
+};
+
+// (event) cancel deletion
+const handleCancelDelete = () => {
+  console.log('[Chat.vue] handleCancelDelete called');
+  showDeleteConfirm.value = false;
+  pendingDeleteMessageId.value = null;
+  console.log('[Chat.vue] showDeleteConfirm set to', showDeleteConfirm.value);
 };
 </script>
 
@@ -165,14 +221,27 @@ const handleCloseSelect = () => {
       :handle-select-all="handleSelectAll"
       :handle-deselect-all="handleDeselectAll"
       :handle-close-select="handleCloseSelect"
+      :handle-delete-selected="handleRequestDeleteSelected"
     />
     <ChatMiddle
       :selected-messages="selectedMessages"
       :handle-select-message="handleSelectMessage"
       :handle-deselect-message="handleDeselectMessage"
+      :handle-request-delete-message="handleRequestDeleteMessage"
     />
     <ChatBottom />
-  </div>
 
+    <ConfirmModal
+      :open="showDeleteConfirm"
+      title="Delete Message"
+      :message="deleteTarget === 'single' ? 'Are you sure you want to delete this message?' : 'Are you sure you want to delete the selected messages?'"
+      confirm-text="Delete"
+      cancel-text="Cancel"
+      confirm-variant="danger"
+      @confirm="handleConfirmDelete"
+      @cancel="handleCancelDelete"
+    />
+
+  </div>
   <NoChatSelected v-else />
 </template>

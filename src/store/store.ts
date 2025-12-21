@@ -193,13 +193,7 @@ const useStore = defineStore("chat", () => {
     try {
       // Get the conversation to access its avatars
       const conversation = conversations.value.find(c => c.id === conversationId);
-      if (!conversation) {
-        console.error('Cannot send message: Conversation not found for id', conversationId);
-        throw new Error('Conversation not found. Please try again after the chat appears in your list.');
-      }
-
       // Get the avatar URL based on which avatar is active
-
       const avatarType = activeAvatar.value;
       const avatarUrl = avatarType === 'A' 
         ? (conversation as any)?.avatarA 
@@ -215,24 +209,26 @@ const useStore = defineStore("chat", () => {
         content,
         type,
         replyTo,
-        avatarUrl, // Send the actual avatar URL
-        avatarType // Add avatarType to message
+        avatarUrl // Send the actual avatar URL
       });
 
       // Add message to local store
+      if (conversation) {
+        if (!Array.isArray(conversation.messages)) {
+          conversation.messages = [];
+        }
+        conversation.messages.push(message);
+        // If you want to track avatarType locally, you can extend the message object here if needed
 
-      // Ensure avatarType is present in local message object
-      message.avatarType = avatarType;
-      conversation.messages.push(message);
-
-      // Move conversation to the top of the list
-      const index = conversations.value.indexOf(conversation);
-      if (index > 0) {
-        // Create a new array to trigger reactivity
-        const updated = [...conversations.value];
-        updated.splice(index, 1);
-        updated.unshift(conversation);
-        conversations.value = updated;
+        // Move conversation to the top of the list
+        const index = conversations.value.indexOf(conversation);
+        if (index > 0) {
+          // Create a new array to trigger reactivity
+          const updated = [...conversations.value];
+          updated.splice(index, 1);
+          updated.unshift(conversation);
+          conversations.value = updated;
+        }
       }
 
       // Emit socket event for real-time updates
@@ -545,12 +541,13 @@ const useStore = defineStore("chat", () => {
   const deleteMessage = async (conversationId: number, messageId: number) => {
     try {
       await apiService.deleteMessage(messageId);
-      
-      // Remove from local store
+      // Remove from local store and trigger reactivity
       const conversation = conversations.value.find(c => c.id === conversationId) ||
                           archivedConversations.value.find(c => c.id === conversationId);
       if (conversation) {
+        // Replace with a new array reference to trigger reactivity
         conversation.messages = conversation.messages.filter(m => m.id !== messageId);
+        conversation.messages = [...conversation.messages];
       }
     } catch (error) {
       console.error('Failed to delete message:', error);

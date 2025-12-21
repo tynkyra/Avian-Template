@@ -199,7 +199,7 @@ const saveChanges = async () => {
 </script>
 
 <template>
-  <div class="w-full max-w-[28rem] mx-auto">
+  <div class="w-full max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto">
     <!--header-->
     <div class="px-5 mb-6 flex justify-between items-center">
       <div class="flex items-center gap-3">
@@ -386,7 +386,7 @@ const saveChanges = async () => {
     <!-- Create Avatar Modal -->
     <Modal :open="showCreateAvatarModal" :close-modal="closeCreateAvatarModal">
       <template v-slot:content>
-        <div class="w-96 bg-white dark:bg-gray-800 rounded-lg p-6">
+        <div class="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl bg-white dark:bg-gray-800 rounded-lg p-6 mx-auto">
           <div class="flex justify-between items-center mb-6">
             <h2 class="heading-1 text-black/70 dark:text-white/70">Create New Avatar</h2>
             <IconButton

@@ -13,6 +13,7 @@ const props = defineProps<{
   handleSelectMessage: (messageId: number) => void;
   handleDeselectMessage: (messageId: number) => void;
   selectedMessages: number[];
+  handleRequestDeleteMessage: (messageId: number) => void;
 }>();
 
 const store = useStore();
@@ -175,6 +176,7 @@ watch(
           :selected="props.selectedMessages.includes(message.id)"
           :handle-select-message="handleSelectMessage"
           :handle-deselect-message="handleDeselectMessage"
+          :handle-request-delete-message="(id) => { console.log('[ChatMiddle.vue] handleRequestDeleteMessage called for', id); props.handleRequestDeleteMessage(id); }"
         />
       </div>
     </template>

@@ -114,6 +114,7 @@ const props = defineProps<{
   selected?: boolean;
   handleSelectMessage: (messageId: number) => void;
   handleDeselectMessage: (messageId: number) => void;
+  handleRequestDeleteMessage: (messageId: number) => void;
 }>();
 
 const activeConversation = inject<Ref<IConversation | undefined>>("activeConversation");
@@ -358,6 +359,7 @@ const formatTime = (dateString: string): string => {
       :handle-close-context-menu="handleCloseContextMenu"
       :handle-select-message="handleSelectMessage"
       :handle-deselect-message="handleDeselectMessage"
+      :handle-request-delete-message="(id) => { console.log('[Message.vue] handleRequestDeleteMessage called for', id); props.handleRequestDeleteMessage(id); }"
     />
   </div>
 </template>

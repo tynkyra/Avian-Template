@@ -25,21 +25,14 @@ const store = useStore();
     </a>
 
     <button
-      aria-label="avian logo"
+      aria-label="pokemon logo"
       :class="{ hidden: SkipLinkFocused }"
       class="outline-none"
     >
       <img
-        v-if="!store.settings.darkMode"
-        src="@src/assets//vectors/logo.svg"
+        src="@src/assets/vectors/pikachuLogoOpaque.png"
         class="w-8 h-7"
-        alt="gray bird logo"
-      />
-      <img
-        v-else
-        src="@src/assets/vectors/logo-white.svg"
-        class="w-8 h-7 opacity-40"
-        alt="white bird logo"
+        alt="pokemon logo"
       />
     </button>
   </div>

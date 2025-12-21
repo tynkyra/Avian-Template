@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import TextInput from "@src/components/ui/inputs/TextInput.vue";
 
-defineEmits(["valueChanged"]);
+const emit = defineEmits(["update:modelValue", "valueChanged"]);
 
 const props = defineProps<{
   id?: string;
   type?: string;
   label?: string;
+  modelValue?: string;
   value?: string;
   name?: string;
   class?: string;
   placeholder?: string;
   bordered?: boolean;
+  inputRef?: any;
 }>();
 </script>
 
@@ -20,7 +22,7 @@ const props = defineProps<{
     <label
       v-if="props.label"
       :id="props.id"
-      class="body-2 text-black/70 dark:text-white/70 mb-3"
+      class="body-2 text-black/70 dark:text-white/70 mb-3 mt-4"
     >
       {{ props.label }}
     </label>
@@ -34,14 +36,15 @@ const props = defineProps<{
         :type="props.type || 'text'"
         name="props.name"
         :id="props.id"
-        :value="value"
+        :value="props.modelValue ?? props.value ?? ''"
         class="text-input"
         :class="[
           props.bordered ? 'bordered-input' : 'ringed-input',
           props.class,
         ]"
         :placeholder="props.placeholder"
-        @value-changed="(value) => $emit('valueChanged', value)"
+        @value-changed="(value) => { emit('update:modelValue', value); emit('valueChanged', value); }"
+        :input-ref="props.inputRef"
       />
 
       <div class="absolute top-0 right-0">

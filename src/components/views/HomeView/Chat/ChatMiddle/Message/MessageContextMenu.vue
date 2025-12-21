@@ -25,6 +25,7 @@ const props = defineProps<{
   handleCloseContextMenu: () => void;
   handleSelectMessage: (messageId: number) => void;
   handleDeselectMessage: (messageId: number) => void;
+  handleRequestDeleteMessage: (messageId: number) => void;
 }>();
 
 const store = useStore();
@@ -103,22 +104,17 @@ const handleCopyMessage = async () => {
 };
 
 // (event) delete message
-const handleDeleteMessage = async () => {
+const handleDeleteMessage = () => {
+  console.log('[MessageContextMenu] Delete clicked for message', props.message.id);
   props.handleCloseContextMenu();
-  
-  if (!confirm('Are you sure you want to delete this message?')) {
-    return;
-  }
-  
-  if (activeConversation) {
-    try {
-      await store.deleteMessage(activeConversation.id, props.message.id);
-    } catch (error) {
-      console.error('Failed to delete message:', error);
-      alert('Failed to delete message. Please try again.');
-    }
+  if (typeof props.handleRequestDeleteMessage === 'function') {
+    console.log('[MessageContextMenu] Calling handleRequestDeleteMessage');
+    props.handleRequestDeleteMessage(props.message.id);
+  } else {
+    console.warn('[MessageContextMenu] No handleRequestDeleteMessage prop!');
   }
 };
+
 </script>
 
 <template>

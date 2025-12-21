@@ -17,8 +17,8 @@ watch(() => props.conversations, (newVal) => {
 
 <template>
   <div>
-    <p v-if="!props.conversations || props.conversations.length === 0" class="px-5 py-4 text-gray-500">
-      DEBUG: No conversations to display (count: {{ props.conversations?.length || 0 }})
+    <p v-if="!props.conversations || props.conversations.length === 0" class="px-5 py-4 text-gray-500 text-center font-medium">
+      Create a new chat to get started!
     </p>
     <Conversation
       v-for="conversation in props.conversations"

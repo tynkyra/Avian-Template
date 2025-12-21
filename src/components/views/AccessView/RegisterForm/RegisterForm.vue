@@ -60,7 +60,7 @@ const handleSignup = async () => {
       email: email.value.trim(),
       password: password.value,
     });
-    router.push("/chat/no-chat/");
+    router.push("/chat");
   } catch (err: any) {
     errorMessage.value = err?.message || "Sign up failed";
   } finally {
@@ -81,14 +81,14 @@ const handleBack = () => {
       <!--header-->
       <div class="mb-6 flex flex-col">
         <img
-          src="@src/assets/vectors/logo-gradient.svg"
+          src="@src/assets/vectors/pokemonLogoOpaque.png"
           class="w-5.5 h-4.5 mb-5 opacity-70"
         />
         <p class="heading-2 text-black/70 dark:text-white/70 mb-4">
-          Get started with Avian
+          Hello there!
         </p>
         <p class="body-3 text-black/75 dark:text-white/70 font-light">
-          Sign in to start using messaging!
+          Create an account to get started!
         </p>
       </div>
 
