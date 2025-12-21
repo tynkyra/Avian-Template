@@ -1,9 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, provide } from "vue";
 
 import useStore from "@src/store/store";
 
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
+
+// Toast state
+const toast = ref<{ message: string; type: 'success' | 'error'; visible: boolean } | null>(null);
+let toastTimeout: number | null = null;
+
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  if (toastTimeout) {
+    clearTimeout(toastTimeout);
+    toastTimeout = null;
+  }
+  toast.value = { message, type, visible: true };
+  toastTimeout = window.setTimeout(() => {
+    toast.value = null;
+    toastTimeout = null;
+  }, 1500);
+}
+
+provide('showToast', showToast);
 
 // Refactoring code:
 // todo reorganize component structure
@@ -72,6 +90,26 @@ onUnmounted(() => {
       class="bg-white dark:bg-gray-800 transition-colors duration-500"
       :style="{ height: height }"
     >
+      <!-- Global Toast Notification -->
+      <transition name="fade">
+        <div
+          v-if="toast && toast.visible"
+          class="fixed top-6 left-1/2 z-50 px-6 py-3 rounded shadow-lg text-center"
+          :class="[
+            'transform -translate-x-1/2',
+            toast.type === 'success'
+              ? 'bg-green-500 text-white'
+              : 'bg-red-500 text-white',
+            // no font-semibold, keep font-normal
+            'text-base',
+            'max-w-xs',
+            store.settings.darkMode ? 'bg-opacity-90' : 'bg-opacity-95'
+          ]"
+          style="min-width: 200px; max-width: 90vw;"
+        >
+          {{ toast.message }}
+        </div>
+      </transition>
       <router-view v-slot="{ Component }">
         <FadeTransition>
           <component :is="Component" />

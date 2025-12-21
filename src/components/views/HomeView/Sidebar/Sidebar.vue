@@ -4,15 +4,18 @@ import { computed } from "vue";
 import useStore from "@src/store/store";
 
 import FadeTransition from "@src/components/ui/transitions/FadeTransition.vue";
-import Calls from "@src/components/views/HomeView/Sidebar/Calls/Calls.vue";
+// Calls import removed (calls feature deleted)
 import Conversations from "@src/components/views/HomeView/Sidebar/Conversations/Conversations.vue";
 // Notifications import removed (notifications feature removed)
 import Settings from "@src/components/views/HomeView/Sidebar/Settings/Settings.vue";
 
 const store = useStore();
 
-// Always show messages (Conversations) in the sidebar
-const ActiveComponent = computed(() => Conversations);
+// Show the correct sidebar component based on navigation
+const ActiveComponent = computed(() => {
+  if (store.activeSidebarComponent === 'settings') return Settings;
+  return Conversations;
+});
 </script>
 
 <template>

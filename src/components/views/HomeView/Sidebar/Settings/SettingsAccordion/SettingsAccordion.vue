@@ -2,24 +2,30 @@
 import { ref } from "vue";
 
 import AccountSettings from "@src/components/views/HomeView/Sidebar/Settings/SettingsAccordion/AccountSettings.vue";
-import PrivacySettings from "@src/components/views/HomeView/Sidebar/Settings/SettingsAccordion/PrivacySettings.vue";
+// PrivacySettings import removed (privacy feature removed)
 import AppearanceSettings from "@src/components/views/HomeView/Sidebar/Settings/SettingsAccordion/AppearanceSettings.vue";
 // NotificationsSettings import removed (notifications feature removed)
 
 // Types
 enum accordionItems {
   accountSettings = "account-settings",
-  privacySettings = "privacy-settings",
   appearanceSettings = "appearance-settings",
-  // notificationsSettings removed (notifications feature removed)
+  // notificationsSettings and privacySettings removed
 }
 
 const accordionState = ref({
   "account-settings": true,
-  "privacy-settings": true,
   "appearance-settings": true,
   // "notifications-settings" removed (notifications feature removed)
 });
+
+// Listen for a custom event to open the account tab
+if (typeof window !== 'undefined') {
+  window.addEventListener('open-account-settings', () => {
+    accordionState.value['account-settings'] = false;
+    accordionState.value['appearance-settings'] = true;
+  });
+}
 
 const handleToggle = (name: accordionItems) => {
   // close all opened tabs
@@ -43,10 +49,6 @@ const handleToggle = (name: accordionItems) => {
     <AccountSettings
       :collapsed="accordionState['account-settings']"
       :handleToggle="() => handleToggle(accordionItems.accountSettings)"
-    />
-    <PrivacySettings
-      :collapsed="accordionState['privacy-settings']"
-      :handleToggle="() => handleToggle(accordionItems.privacySettings)"
     />
     <AppearanceSettings
       :collapsed="accordionState['appearance-settings']"

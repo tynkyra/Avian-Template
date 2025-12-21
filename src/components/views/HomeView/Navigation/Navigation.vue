@@ -18,7 +18,7 @@ import NavLink from "@src/components/views/HomeView/Navigation/NavLink.vue";
 
 const store = useStore();
 
-const showDropdown = ref(false);
+const showDropdown = ref(''); // '' | 'profile-menu' | 'small-profile-menu'
 
 const emit = defineEmits(['toggle-sidebar']);
 
@@ -50,15 +50,6 @@ const handleActiveSidebarComponentChange = (value: string) => {
             />
           </li>
 
-          <!--contacts list button-->
-          <li>
-            <NavLink
-              :icon="UserIcon"
-              title="Contacts"
-              @click="() => handleActiveSidebarComponentChange('contacts')"
-              :active="store.activeSidebarComponent === 'contacts'"
-            />
-          </li>
 
           <!--dropdown button small screen-->
           <li>
@@ -66,32 +57,13 @@ const handleActiveSidebarComponentChange = (value: string) => {
               id="small-profile-menu"
               class="xs:block md:hidden"
               aria-labelledby="small-profile-menu-button"
-              :show-dropdown="showDropdown"
-              :handle-show-dropdown="() => (showDropdown = true)"
-              :handle-close-dropdown="() => (showDropdown = false)"
+              :show-dropdown="showDropdown === 'small-profile-menu'"
+              :handle-show-dropdown="() => (showDropdown = 'small-profile-menu')"
+              :handle-close-dropdown="() => (showDropdown = '')"
             />
           </li>
 
-          <!--notifications button-->
-          <li class="xs:hidden md:inline">
-            <NavLink
-              :icon="BellIcon"
-              title="Notifications"
-              :notifications="3"
-              @click="() => handleActiveSidebarComponentChange('notifications')"
-              :active="store.activeSidebarComponent === 'notifications'"
-            />
-          </li>
 
-          <!--voice call button-->
-          <li>
-            <NavLink
-              :icon="PhoneIcon"
-              title="Call log"
-              @click="() => handleActiveSidebarComponentChange('phone')"
-              :active="store.activeSidebarComponent === 'phone'"
-            />
-          </li>
 
           <!--settings button small screen-->
           <li class="xs:inline md:hidden">
@@ -140,9 +112,9 @@ const handleActiveSidebarComponentChange = (value: string) => {
         id="profile-menu"
         class="xs:hidden md:block"
         aria-labelledby="profile-menu-button"
-        :show-dropdown="showDropdown"
-        :handle-show-dropdown="() => (showDropdown = true)"
-        :handle-close-dropdown="() => (showDropdown = false)"
+        :show-dropdown="showDropdown === 'profile-menu'"
+        :handle-show-dropdown="() => (showDropdown = 'profile-menu')"
+        :handle-close-dropdown="() => (showDropdown = '')"
       />
     </div>
   </div>

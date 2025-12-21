@@ -24,6 +24,7 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3001;
 
+
 // Middleware
 app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
@@ -33,6 +34,18 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 app.use(express.json());
+// Serve avatars directory for profile images
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const avatarStaticPath = path.resolve(__dirname, 'public', 'avatars');
+console.log('[Backend] Serving avatars from:', avatarStaticPath);
+app.use('/avatars', express.static(avatarStaticPath));
+// Debug: 404 handler for avatars
+app.use('/avatars/:file', (req, res) => {
+  console.warn('[Backend] Avatar not found:', req.params.file);
+  res.status(404).send('Avatar not found');
+});
 app.use('/uploads', express.static('uploads'));
 app.use('/uploads', recordingsRoutes);
 

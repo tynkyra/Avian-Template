@@ -37,12 +37,6 @@ const store = useStore();
       :handle-toggle-switch="(value) => (store.settings.darkMode = value)"
       class="mb-7"
     />
-    <SettingsSwitch
-      title="Bordered Theme"
-      description="Apply borders to the theme"
-      :value="!!store.settings.borderedTheme"
-      :handle-toggle-switch="(value) => (store.settings.borderedTheme = value)"
-      class="mb-7"
-    />
+    <!-- Bordered Theme setting removed -->
   </Collapse>
 </template>

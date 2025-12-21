@@ -26,6 +26,13 @@ const useStore = defineStore("chat", () => {
   // app data refs
   // data refs
   const user: Ref<IUser | undefined> = ref(undefined);
+  // Helper to fix avatar URL for user
+  function getUserAvatarUrl() {
+    if (!user.value?.avatar) return '';
+    if (user.value.avatar.startsWith('http://') || user.value.avatar.startsWith('https://')) return user.value.avatar;
+    if (user.value.avatar.startsWith('/avatars/')) return 'http://127.0.0.1:3003' + user.value.avatar;
+    return user.value.avatar;
+  }
   const conversations: Ref<IConversation[]> = ref([]);
   const notifications: Ref<INotification[]> = ref([]);
   const archivedConversations: Ref<IConversation[]> = ref([]);
@@ -690,6 +697,7 @@ const useStore = defineStore("chat", () => {
     setActiveAvatar: (avatar: 'A' | 'B') => {
       activeAvatar.value = avatar;
     },
+    getUserAvatarUrl,
   };
 });
 

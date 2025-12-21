@@ -76,18 +76,25 @@ export const getOddContact = (conversation: IConversation) => {
  * @param conversation
  * @returns A string representing the url to the avatar image
  */
+// Helper to prefix avatar URLs with backend server address if needed
+const AVATAR_BASE_URL = 'http://127.0.0.1:3003'; // Updated to match backend port
+function fixAvatarUrl(url?: string) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/avatars/')) return AVATAR_BASE_URL + url;
+  return url;
+}
+
 export const getAvatar = (conversation: IConversation) => {
   if (!conversation) return '';
-  
   if (conversation.type === 'self_chat') {
-    return (conversation as any)?.displayPhoto || '';
+    return fixAvatarUrl((conversation as any)?.displayPhoto || '');
   }
-  
   if (["group", "broadcast"].includes(conversation.type)) {
-    return (conversation as any)?.displayPhoto;
+    return fixAvatarUrl((conversation as any)?.displayPhoto);
   } else {
     let oddContact = getOddContact(conversation);
-    return oddContact?.avatar;
+    return fixAvatarUrl(oddContact?.avatar);
   }
 };
 

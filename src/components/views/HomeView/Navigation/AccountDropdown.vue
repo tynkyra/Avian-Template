@@ -17,7 +17,19 @@ const props = defineProps<{
   id: string;
 }>();
 
+
 const store = useStore();
+
+// Debug: log avatar URL whenever it changes
+import { watch } from 'vue';
+watch(
+  () => store.user?.avatar,
+  (newVal) => {
+    const url = store.getUserAvatarUrl() + (newVal ? '?v=' + encodeURIComponent(newVal) : '');
+    console.log('[AccountDropdown] Avatar URL:', url);
+  },
+  { immediate: true }
+);
 
 // (event) close dropdown menu when clicking outside
 const handleCloseOnClickOutside = (event: Event) => {
@@ -49,7 +61,7 @@ const handleCloseOnClickOutside = (event: Event) => {
     >
       <div
         id="user-avatar"
-        :style="{ backgroundImage: `url(${store.user?.avatar})` }"
+        :style="{ backgroundImage: `url(${store.getUserAvatarUrl() + (store.user?.avatar ? '?v=' + encodeURIComponent(store.user.avatar) : '')})` }"
         class="w-7 h-7 rounded-full bg-cover bg-center"
       ></div>
     </button>
@@ -73,7 +85,18 @@ const handleCloseOnClickOutside = (event: Event) => {
         class="dropdown-link dropdown-link-primary"
         aria-label="Show profile information"
         role="menuitem"
-        @click="props.handleCloseDropdown"
+        @click="() => {
+          store.activeSidebarComponent = 'settings';
+          // On desktop, open sidebar if closed
+          if (window.innerWidth >= 768) {
+            const sidebar = document.querySelector('aside');
+            if (sidebar && sidebar.classList.contains('xs:-translate-x-full')) {
+              sidebar.classList.remove('xs:-translate-x-full');
+              sidebar.classList.add('xs:translate-x-0');
+            }
+          }
+          props.handleCloseDropdown();
+        }"
       >
         <InformationCircleIcon
           class="h-5 w-5 mr-3 text-black opacity-60 dark:text-white dark:opacity-70"
